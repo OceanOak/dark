@@ -1,0 +1,56 @@
+/* .App {
+  background-color: #1B1B1B;
+  height: 100vh;
+}
+
+.logo{
+  height: 3rem;
+  margin: 1rem;
+}
+
+.chat-box{
+  position: relative;
+  background-color: #1B1B1B;
+  width: 100%;
+  height: 90vh;
+  display: flex;
+  justify-content: center;
+
+}
+
+.user-chat{
+  color: white;
+  text-align: left;
+
+
+}
+
+.user-message{
+}
+
+.prompt-input{
+  position: absolute;
+  bottom: 24px;
+  width: 80%;
+}
+
+.prompt-input-text{
+  width: 100%;
+  background-color: #40414F ;
+  color:white;
+  border: none;
+  border-radius: 8px;
+  outline: none;
+  padding-right: 15px;
+  padding-left: 15px;
+  padding-top: 14px;
+  font-size: 1.125em;
+}
+
+.privacy-policy-text{
+  position: absolute;
+  bottom: 0;
+  color: white;
+  font-size: 11px;
+  color: #6e6d6d;
+} */
