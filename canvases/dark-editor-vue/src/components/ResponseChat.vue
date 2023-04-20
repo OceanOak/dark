@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <div>
     <div v-if="response">
       <p class="font-bold ">Response: {{ response }}</p>
@@ -15,4 +15,4 @@ export default {
     },
   },
 };
-</script>
+</script> -->

@@ -1,18 +1,17 @@
 <template>
-  <div>
-    <div v-for="(message, index) in messages" :key="index">
-      <p>Your messages: {{ message }}</p>
-    </div>
-  </div>
+<div class="text-white bg-slate-500 rounded-md flex flex-col stretch my-4 mx-auto max-w-3xl shadow-lg shadow-black/10">
+      <p>{{ promptValue }}</p>
+
+</div>
 </template>
 
-<script>
-export default {
-  props: {
-    messages: {
-      type: Array,
-      default: () => [],
-    },
-  },
-};
+<script setup lang="ts">
+import { defineProps } from 'vue';
+
+const props = defineProps({
+  promptValue: {
+    type: String,
+    required: true
+  }
+});
 </script>

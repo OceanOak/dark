@@ -24,11 +24,14 @@ module RestrictedFileIO =
     | Read
 
   module Config =
-    type Root = | BackendStatic
+    type Root =
+      | BackendStatic
+      | EditorFiles
 
     let dir (root : Root) : string =
       match root with
       | BackendStatic -> "/home/dark/app/backend/static/"
+      | EditorFiles -> "/home/dark/app/canvases/"
 
   let checkFilename (root : Config.Root) (mode : Mode) (f : string) =
     let dir = Config.dir root
@@ -147,6 +150,31 @@ let fns : List<BuiltInFn> =
               let contents =
                 RestrictedFileIO.readfileBytes
                   RestrictedFileIO.Config.BackendStatic
+                  path
+              return DResult(Ok(DBytes contents))
+            with
+            | e -> return DResult(Error(DString($"Error reading file: {e.Message}")))
+          }
+        | _ -> incorrectArgs ())
+      sqlSpec = NotQueryable
+      previewable = Impure
+      deprecated = NotDeprecated }
+
+
+    { name = fn "Experiments" "readFromCanvases" 0
+      typeParams = []
+      parameters = [ Param.make "path" TString "" ]
+      returnType = TResult(TBytes, TString)
+      description =
+        "Reads a file at canvases/<param path>, and returns its contents as Bytes wrapped in a Result"
+      fn =
+        (function
+        | _, _, [ DString path ] ->
+          uply {
+            try
+              let contents =
+                RestrictedFileIO.readfileBytes
+                  RestrictedFileIO.Config.EditorFiles
                   path
               return DResult(Ok(DBytes contents))
             with
