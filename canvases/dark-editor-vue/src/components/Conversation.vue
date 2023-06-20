@@ -48,6 +48,7 @@ const isPromptVisible = ref(false)
           :codeSnippets="state.codeSnippets"
           :tasks="state.tasks"
           :actions="state.actions"
+          :fnList="state.fnList"
         />
       </div>
     </div>

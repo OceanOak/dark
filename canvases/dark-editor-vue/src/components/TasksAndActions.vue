@@ -1,11 +1,41 @@
 <script setup lang="ts">
-import { defineProps } from 'vue'
+import { defineProps, ref } from 'vue'
 import type { Task, Action } from '@/types'
 
 const props = defineProps<{
   tasks: Task[]
   actions: Action[]
+  fnList: string[]
 }>()
+let fnBody = ref(props.fnList[0])
+let showTextArea = ref(false)
+function displayTextArea(index: number) {
+  showTextArea.value = true
+  getFnBody()
+  console.log('fnList', props.fnList)
+  fnBody.value = props.fnList[index]
+}
+
+async function getFnBody() {
+  try {
+    console.log('trying ...')
+    const result = await window.darklang.handleEvent({ GetFnBody: [] })
+    console.log('result', result)
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+async function save() {
+  try {
+    console.log('trying ...')
+    console.log('fnBody', fnBody.value)
+    const result = await window.darklang.handleEvent({ SaveFnList: [fnBody.value] })
+    console.log('result', result)
+  } catch (error) {
+    console.error(error)
+  }
+}
 </script>
 
 <template>
@@ -26,6 +56,28 @@ const props = defineProps<{
           {{ action.description }}
         </li>
       </ul>
+    </div>
+    <div class="p-2 m-2 rounded bg-[#3a3a3a]">
+      <h2 class="font-semibold">Functions</h2>
+      <ul class="text-[#9ea4ac] text-sm">
+        <li
+          class="cursor-pointer"
+          @click="displayTextArea(index)"
+          v-for="(fn, index) in fnList"
+          :key="index"
+        >
+          {{ fn }}
+        </li>
+      </ul>
+    </div>
+    <div v-if="showTextArea" class="p-2 m-2 rounded bg-[#3a3a3a]">
+      <h2 class="font-semibold">Function</h2>
+      <textarea
+        v-model="fnBody"
+        class="text-[#9ea4ac] text-sm"
+        placeholder="Enter function here"
+      ></textarea>
+      <button @click="save" class="bg-[#3a3a3a] text-[#9ea4ac] text-sm">save</button>
     </div>
   </div>
 </template>

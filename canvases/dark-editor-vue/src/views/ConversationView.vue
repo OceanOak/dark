@@ -16,6 +16,7 @@ let props = defineProps<{ state: Model }>()
           :state="props.state"
           :tasks="state.tasks"
           :actions="state.actions"
+          :fnList="state.fnList"
         />
       </div>
       <div class="w-2/5 overflow-auto pb-24">

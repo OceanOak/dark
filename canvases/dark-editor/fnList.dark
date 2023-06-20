@@ -1,0 +1,2 @@
+[{ "name": "add", "body": "let add (a: int) (b: int) : int = a + b" },
+ { "name": "sub", "body": "let sub (a: int) (b: int) : int = a - b" }]

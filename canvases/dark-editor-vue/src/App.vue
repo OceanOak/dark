@@ -12,6 +12,7 @@ let init: Model = {
   codeSnippets: [],
   tasks: [],
   actions: [],
+  fnList: [],
 }
 
 // Set initial state; listen for state updates from Dark

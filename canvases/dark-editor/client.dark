@@ -23,7 +23,6 @@ let rUnwrap (result: Result<'a, 'b>) : 'a =
 
     logErr ("Couldn't unwrap Result - instead of an OK, got this Error: " ++ e)
 
-
 // todo: throw this stuff into an OpenAI module?
 type OpenAIChatCompletionRequestMessage = { role: String; content: String }
 
@@ -102,6 +101,7 @@ let parseAndSerializeProgram (userProgram: String) : Result<String, String> =
 // "all code snippets returned must be executable without any other context needed"
 
 // Model
+type Fn = { name: String; body: String }
 
 type Status =
   | Todo
@@ -139,7 +139,8 @@ type Model =
     chatHistory: List<ChatHistoryItem>
     codeSnippets: List<CodeSnippet>
     tasks: List<Task>
-    actions: List<Action> }
+    actions: List<Action>
+    fnList: List<String> }
 
 
 // Update
@@ -147,6 +148,8 @@ type Msg =
   | LoadSystemPrompt
   | UserGavePrompt of prompt: String
   | UserRequestedCodeEval of id: String * codeSnippet: String
+  | GetFnBody
+  | SaveFnList of fn: String
 
 
 let sendError (model: Model) (codeSnippet: String) (err: String) : Model =
@@ -180,10 +183,73 @@ let update (model: Model) (msg: Msg) : Model =
           codeSnippets = model.codeSnippets
           tasks = model.tasks
           actions = model.actions
+          fnList = model.fnList
 
           // CLEANUP: update this syntax to { model with systemPrompt = systemPrompt } when we can
           systemPrompt = response.body |> String.fromBytes }
     | Error err -> logErr "Couldn't load system prompt"
+
+  | GetFnBody ->
+    let fnBody =
+      WASM.HttpClient.request
+        "get"
+        "http://dark-editor.dlio.localhost:11003/get-fns-name-and-body"
+        []
+        Bytes.empty
+
+    match fnBody with
+    | Ok response ->
+      match Json.parse<List<Fn>> (response.body |> String.fromBytes) with
+      | Ok fnList ->
+        log "success"
+        fnList
+
+        Model
+          { isLoading = model.isLoading
+            chatHistory = model.chatHistory
+            codeSnippets = model.codeSnippets
+            tasks = model.tasks
+            actions = model.actions
+            fnList = fnList |> List.map (fun fn -> fn.body)
+            systemPrompt = model.systemPrompt }
+      | Error err -> logErr "Couldn't parse fnList2"
+    | Error err -> logErr "Couldn't load fn body"
+
+  | SaveFnList fn ->
+    let fnList =
+      WASM.HttpClient.request
+        "POST"
+        "http://dark-editor.dlio.localhost:11003/save-fns-list"
+        []
+        (String.toBytes fn)
+
+    match fnList with
+    | Ok response ->
+      log "success"
+
+      Model
+        { isLoading = model.isLoading
+          chatHistory = model.chatHistory
+          codeSnippets = model.codeSnippets
+          tasks = model.tasks
+          actions = model.actions
+          fnList = model.fnList
+          systemPrompt = model.systemPrompt }
+    // match Json.parse<List<Fn>> (response.body |> String.fromBytes) with
+    // | Ok fnList ->
+    //   log "success"
+    //   fnList
+
+    //   Model
+    //     { isLoading = model.isLoading
+    //       chatHistory = model.chatHistory
+    //       codeSnippets = model.codeSnippets
+    //       tasks = model.tasks
+    //       actions = model.actions
+    //       fnList = fnList |> List.map (fun fn -> fn.body)
+    //       systemPrompt = model.systemPrompt }
+    | Error err -> logErr "Couldn't parse fnList2"
+
 
 
   | UserGavePrompt userPrompt ->
@@ -197,7 +263,8 @@ let update (model: Model) (msg: Msg) : Model =
               [ ChatHistoryItem.UserPrompt (rUnwrap (String.random 5)) userPrompt ]
           codeSnippets = model.codeSnippets
           tasks = model.tasks
-          actions = model.actions }
+          actions = model.actions
+          fnList = model.fnList }
 
     updateStateInJS newModel
 
@@ -271,7 +338,8 @@ let update (model: Model) (msg: Msg) : Model =
           chatHistory = List.append model.chatHistory newChatItemsItems
           codeSnippets = List.append model.codeSnippets newCodeSnippets
           tasks = List.append model.tasks newtasks
-          actions = model.actions }
+          actions = model.actions
+          fnList = model.fnList }
 
     | Error err, _ -> log "error getting tasks " ++ err
     | _, Error err -> log "error getting response " ++ err
@@ -311,7 +379,8 @@ let update (model: Model) (msg: Msg) : Model =
               chatHistory = model.chatHistory
               codeSnippets = updatedCodeSnippets
               tasks = model.tasks
-              actions = model.actions }
+              actions = model.actions
+              fnList = model.fnList }
 
         | Error err -> sendError model codeSnippet err
 
@@ -384,13 +453,36 @@ let init () : Model =
             BotResponseItem.CodeSnippet demoSnippet.id
             BotResponseItem.Actions demoAction ] ]
 
+
+    let getFnList =
+      let response =
+        WASM.HttpClient.request
+          "GET"
+          "http://dark-editor.dlio.localhost:11003/get-fns-list"
+          []
+          Bytes.empty
+
+      match response with
+      | Ok response ->
+        let smth = response.body |> String.fromBytes
+        // let test = "\"\"\"[" ++ smth ++ "]\"\"\""
+        // log test
+
+        match Json.parse<List<Fn>> smth with
+        | Ok fnList ->
+          log "success111"
+          fnList |> List.map (fun fn -> fn.name)
+        | Error err -> logErr "Couldn't parse fnList"
+      | Error err -> logErr "Couldn't load fn body"
+
     Model
       { isLoading = false
         systemPrompt = "Loading..."
         chatHistory = chatHistory
         codeSnippets = [ demoSnippet ]
         tasks = []
-        actions = demoAction }
+        actions = demoAction
+        fnList = getFnList }
 
   updateStateInJS initState
 

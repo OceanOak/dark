@@ -5,6 +5,101 @@ let rUnwrap (result: Result<'a, 'b>) : 'a =
     log e // TODO: this won't work if non-string
     alert "Expected OK, got Error - see log"
 
+[<HttpHandler("GET", "/get-fns-list")>]
+let _handler _req =
+
+  let readFnList = Experiments.readFromCanvases "dark-editor/fnList.dark"
+
+  let fnLists =
+    match readFnList with
+    | Ok fnList -> fnList
+    | Error _e -> "error"
+
+  PACKAGE.Darklang.Stdlib.Http.responseWithHeaders
+    fnLists
+    [ ("Content-Type", "application/json") ]
+    200
+
+[<HttpHandler("POST", "/save-fns-list")>]
+let _handler _req =
+  let filePath = "dark-editor/fnList.dark"
+  let contents = request.body
+  let result = Experiments.writeToCanvases filePath contents
+
+  match result with
+  | Ok _ ->
+    PACKAGE.Darklang.Stdlib.Http.responseWithHeaders
+      (String.toBytes "success")
+      [ ("Content-Type", "application/json") ]
+      200
+  | Error _e ->
+    PACKAGE.Darklang.Stdlib.Http.responseWithHeaders
+      (String.toBytes "error")
+      [ ("Content-Type", "application/json") ]
+      500
+
+
+
+[<HttpHandler("GET", "/get-fns-name-and-body-draft")>]
+let _handler _req =
+
+  let readFnList = Experiments.readFromCanvases "dark-editor/fnList.dark"
+
+  let fnLists =
+    match readFnList with
+    | Ok fnList -> fnList |> String.fromBytes
+    | Error _e -> "error"
+
+  let fnList =
+    match fnLists |> Json.parse<List<Dict<String>>> with
+    | Ok fnList ->
+      log fnList
+      fnList
+    | Error _e -> []
+
+  let test =
+    fnList
+    |> List.map (fun fn ->
+      let name = Option.withDefault (Dict.get fn "name") "[]"
+      let body = Option.withDefault (Dict.get fn "body") "[]"
+      $"{{\"name\": \"{name}\",\"body\": \"{body}\"}}")
+    |> String.join ",\n"
+
+
+  let result = $"[{test}]" |> String.toBytes
+
+  PACKAGE.Darklang.Stdlib.Http.responseWithHeaders
+    result
+    [ ("Content-Type", "application/json") ]
+    200
+
+
+[<HttpHandler("GET", "/get-fns-name-and-body")>]
+let _handler _req =
+
+  let fnList =
+    [ Dict
+        { name = "add"
+          body = "let add (a: int) (b: int) : int = a + b" }
+      Dict
+        { name = "multiply"
+          body = "let multiply (a: int) (b: int) : int = a * b" } ]
+
+  let test =
+    fnList
+    |> List.map (fun fn ->
+      let name = Option.withDefault (Dict.get fn "name") "[]"
+      let body = Option.withDefault (Dict.get fn "body") "[]"
+      $"{{\"name\": \"{name}\",\"body\": \"{body}\"}}")
+    |> String.join ",\n"
+
+  let result = $"[{test}]" |> String.toBytes
+
+  PACKAGE.Darklang.Stdlib.Http.responseWithHeaders
+    result
+    [ ("Content-Type", "application/json") ]
+    200
+
 
 [<HttpHandler("GET", "/openai-apikey-yikes")>]
 let _handler _req =
@@ -76,8 +171,16 @@ let _handler _req =
   | Ok program ->
     let types = Option.withDefault (Dict.get program "types") "[]"
     let fns = Option.withDefault (Dict.get program "fns") "[]"
+    let exprs = Option.withDefault (Dict.get program "exprs") "[]"
 
-    let json = "{ \"types\": " ++ types ++ ", \"fns\": " ++ fns ++ "}"
+    let json =
+      "{ \"types\": "
+      ++ types
+      ++ ", \"fns\": "
+      ++ fns
+      ++ ", \"exprs\": "
+      ++ exprs
+      ++ "}"
 
     PACKAGE.Darklang.Stdlib.Http.responseWithHeaders
       (String.toBytes json)

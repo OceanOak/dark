@@ -27,6 +27,7 @@ export type BotResponseItem =
   | { typ: 'Text'; text: string }
   | { typ: 'Tasks'; tasks: Task[] }
   | { typ: 'Actions'; actions: Action[] }
+  | { typ: 'FnList'; fnList: string[] }
 
 export type ChatHistoryItem =
   | { typ: 'User'; id: string; prompt: string }
@@ -39,6 +40,7 @@ export interface Model {
   codeSnippets: CodeSnippet[]
   tasks: Task[]
   actions: Action[]
+  fnList: string[]
 }
 
 // -- parse the internal model based on however Dark stuff is serialized --
@@ -82,6 +84,11 @@ export function fromSerializedDarkModel(serializedDarkModel: string): Model {
             case 'Actions':
               return {
                 typ: 'Actions',
+                id: data[0],
+              }
+            case 'FnList':
+              return {
+                typ: 'FnList',
                 id: data[0],
               }
 
@@ -128,5 +135,6 @@ export function fromSerializedDarkModel(serializedDarkModel: string): Model {
     codeSnippets: codeSnippets,
     tasks: tasks,
     actions: actions,
+    fnList: source.fnList,
   }
 }
