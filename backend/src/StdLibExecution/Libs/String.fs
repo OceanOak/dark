@@ -998,7 +998,8 @@ let fns : List<BuiltInFn> =
 
     { name = fn "ellipsis" 0
       typeParams = []
-      parameters = [ Param.make "string" TString ""; Param.make "targetLength" TInt "" ]
+      parameters =
+        [ Param.make "string" TString ""; Param.make "targetLength" TInt "" ]
       returnType = TString
       description =
         "Truncates <param string> if its length is more than <param targetLength>. The truncated string will have an ellipsis ('...') appended.
@@ -1016,6 +1017,6 @@ let fns : List<BuiltInFn> =
         | _ -> incorrectArgs ())
       sqlSpec = NotYetImplemented
       previewable = Pure
-      deprecated = NotDeprecated }]
+      deprecated = NotDeprecated } ]
 
 let contents = (fns, types, constants)
