@@ -164,11 +164,11 @@ module Darklang =
         result
 
 
-    let showModule (name : String) : Int =
+    let showModule (name: String) : Int =
       let modules =
         CLI.HttpClient.request
           "GET"
-          ("http://dark-packages.dlio.localhost:11003/modules/" ++ name )
+          ("http://dark-packages.dlio.localhost:11003/modules/" ++ name)
           []
           Bytes.empty
 
@@ -195,8 +195,12 @@ module Darklang =
         print "Error getting package modules"
         1
       | Some modules ->
-        if modules == PACKAGE.Darklang.Stdlib.Packages {types = []; fns = []; constants = []} then
-          print "module not found"
+        if
+          modules
+          == PACKAGE.Darklang.Stdlib.Packages
+            { types = []; fns = []; constants = [] }
+        then
+          print "package not found"
           1
         else
           let result = modules |> PACKAGE.Darklang.PrettyPrinter.packages
@@ -208,9 +212,9 @@ module Darklang =
       | [ "-h" ] -> PACKAGE.Darklang.Cli.Command.Help
       | [ "--help" ] -> PACKAGE.Darklang.Cli.Command.Help
       | [ "--prompt"; prompt ] -> PACKAGE.Darklang.Cli.Command.Infer prompt
-      | [ "show"; fnName ] ->
-        if String.startsWith fnName "@" then
-          PACKAGE.Darklang.Cli.Command.Show fnName
+      | [ "show"; item ] ->
+        if String.startsWith item "@" then
+          PACKAGE.Darklang.Cli.Command.Show item
         else
           PACKAGE.Darklang.Cli.Command.Invalid [ "Invalid package name" ]
       | scriptPath :: args ->
@@ -291,8 +295,7 @@ Options:
         | "fn" -> PACKAGE.Darklang.Cli.showFn name owner modules
         | "type" -> PACKAGE.Darklang.Cli.showType name owner modules
         | "constant" -> PACKAGE.Darklang.Cli.showConstant name owner modules
-        | _ ->
-          PACKAGE.Darklang.Cli.showModule fullName
+        | _ -> PACKAGE.Darklang.Cli.showModule fullName
 
 
 
