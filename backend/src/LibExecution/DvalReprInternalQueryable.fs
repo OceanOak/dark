@@ -90,6 +90,7 @@ let rec private toJsonV0
     | TBool, DBool b -> w.WriteBooleanValue b
     | TInt, DInt i -> w.WriteNumberValue i // CLEANUP if the number is outside the range, store as a string?
     | TInt8, DInt8 i -> w.WriteNumberValue i
+    | TInt16, DInt16 i -> w.WriteNumberValue i
     | TFloat, DFloat f ->
       if System.Double.IsNaN f then
         w.WriteStringValue "NaN"
@@ -202,6 +203,7 @@ let rec private toJsonV0
     // exhaustiveness checking
     | TInt, _
     | TInt8, _
+    | TInt16, _
     | TFloat, _
     | TBool, _
     | TUnit, _
@@ -240,6 +242,7 @@ let parseJsonV0 (types : Types) (typ : TypeReference) (str : string) : Ply<Dval>
     | TBool, JsonValueKind.False -> DBool false |> Ply
     | TInt, JsonValueKind.Number -> j.GetInt64() |> DInt |> Ply
     | TInt8, JsonValueKind.Number -> j.GetSByte() |> DInt8 |> Ply
+    | TInt16, JsonValueKind.Number -> j.GetInt16() |> DInt16 |> Ply
     | TFloat, JsonValueKind.Number -> j.GetDouble() |> DFloat |> Ply
     | TFloat, JsonValueKind.String ->
       match j.GetString() with
@@ -373,6 +376,7 @@ let parseJsonV0 (types : Types) (typ : TypeReference) (str : string) : Ply<Dval>
     | TBool, _
     | TInt, _
     | TInt8, _
+    | TInt16, _
     | TFloat, _
     | TChar, _
     | TString, _
@@ -395,6 +399,7 @@ module Test =
     match dval with
     | DInt _
     | DInt8 _
+    | DInt16 _
     | DString _
     | DUnit _
     | DBool _

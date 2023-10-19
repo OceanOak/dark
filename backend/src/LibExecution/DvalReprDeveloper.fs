@@ -9,6 +9,7 @@ let rec typeName (t : TypeReference) : string =
   match t with
   | TInt -> "Int"
   | TInt8 -> "Int8"
+  | TInt16 -> "Int16"
   | TFloat -> "Float"
   | TBool -> "Bool"
   | TUnit -> "Unit"
@@ -42,6 +43,7 @@ let rec knownTypeName (vt : KnownType) : string =
   match vt with
   | KTInt -> "Int"
   | KTInt8 -> "Int8"
+  | KTInt16 -> "Int16"
   | KTFloat -> "Float"
   | KTBool -> "Bool"
   | KTUnit -> "Unit"
@@ -109,6 +111,7 @@ let toRepr (dv : Dval) : string =
     | DChar c -> $"'{c}'"
     | DInt i -> string i
     | DInt8 i -> string i
+    | DInt16 i -> string i
     | DBool true -> "true"
     | DBool false -> "false"
     | DFloat f ->

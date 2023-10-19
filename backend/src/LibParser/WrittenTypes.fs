@@ -67,6 +67,7 @@ type MatchPattern =
   | MPUnit of id
   | MPInt of id * int64
   | MPInt8 of id * int8
+  | MPInt16 of id * int16
   | MPBool of id * bool
   | MPFloat of id * Sign * string * string
   | MPChar of id * string
@@ -112,6 +113,7 @@ type TypeReference =
   | TBool
   | TInt
   | TInt8
+  | TInt16
   | TFloat
   | TChar
   | TString
@@ -136,6 +138,7 @@ type Expr =
   | EBool of id * bool
   | EInt of id * int64
   | EInt8 of id * int8
+  | EInt16 of id * int16
   | EFloat of id * Sign * string * string
   | EChar of id * string
   | EString of id * List<StringSegment>
@@ -204,6 +207,7 @@ type Const =
   | CBool of bool
   | CInt of int64
   | CInt8 of int8
+  | CInt16 of int16
   | CFloat of Sign * string * string
   | CChar of string
   | CString of string

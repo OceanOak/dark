@@ -80,6 +80,7 @@ let rec dvalToSql
     | TVariable _, DInt i
     | TInt, DInt i -> return Sql.int64 i, TInt
     | TInt8, DInt8 i -> return Sql.int64 (int i), TInt8
+    | TInt16, DInt16 i -> return Sql.int16 i, TInt16
 
     | TVariable _, DFloat v
     | TFloat, DFloat v -> return Sql.double v, TFloat
@@ -132,6 +133,7 @@ let rec dvalToSql
     // exhaustiveness check
     | _, DInt _
     | _, DInt8 _
+    | _, DInt16 _
     | _, DFloat _
     | _, DBool _
     | _, DString _
@@ -533,6 +535,11 @@ let rec lambdaToSql
           let name = randomString 10
           return $"(@{name})", [ name, Sql.int8 v ], TInt8
 
+        | EInt16(_, v) ->
+          typecheck $"Int16 {v}" TInt16 expectedType
+          let name = randomString 10
+          return $"(@{name})", [ name, Sql.int16 v ], TInt16
+
         | EBool(_, v) ->
           typecheck $"Bool {v}" TBool expectedType
           let name = randomString 10
@@ -735,6 +742,7 @@ let rec lambdaToSql
             | TString -> "text"
             | TInt -> "bigint"
             | TInt8 -> "bigint"
+            | TInt16 -> "smallint"
             | TFloat -> "double precision"
             | TBool -> "bool"
             | TDateTime -> "timestamp with time zone"
@@ -754,6 +762,7 @@ let rec lambdaToSql
           | TString
           | TInt
           | TInt8
+          | TInt16
           | TFloat
           | TBool
           | TDateTime
@@ -893,6 +902,7 @@ let partiallyEvaluate
             match expr with
             | EInt _
             | EInt8 _
+            | EInt16 _
             | EBool _
             | EUnit _
             | EFloat _
@@ -911,6 +921,7 @@ let partiallyEvaluate
         | EString _
         | EInt _
         | EInt8 _
+        | EInt16 _
         | EFloat _
         | EBool _
         | EUnit _
@@ -943,6 +954,7 @@ let partiallyEvaluate
             match expr with
             | EInt _
             | EInt8 _
+            | EInt16 _
             | EString _
             | EVariable _
             | EChar _

@@ -333,6 +333,7 @@ type MatchPattern =
   | MPEnum of id * caseName : string * fieldPats : List<MatchPattern>
   | MPInt of id * int64
   | MPInt8 of id * int8
+  | MPInt16 of id * int16
   | MPBool of id * bool
   | MPChar of id * string
   | MPString of id * string
@@ -373,6 +374,7 @@ type Infix =
 type TypeReference =
   | TInt
   | TInt8
+  | TInt16
   | TFloat
   | TBool
   | TUnit
@@ -399,6 +401,7 @@ type TypeReference =
 type Expr =
   | EInt of id * int64
   | EInt8 of id * int8
+  | EInt16 of id * int16
   | EBool of id * bool
   | EString of id * List<StringSegment>
   | EUnit of id
@@ -511,6 +514,7 @@ module Expr =
     match expr with
     | EInt(id, _)
     | EInt8(id, _)
+    | EInt16(id, _)
     | EBool(id, _)
     | EString(id, _)
     | EChar(id, _)
@@ -630,6 +634,7 @@ module UserType =
 type Const =
   | CInt of int64
   | CInt8 of int8
+  | CInt16 of int16
   | CBool of bool
   | CString of string
   | CChar of string
