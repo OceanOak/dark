@@ -419,8 +419,14 @@ let fns (config : Configuration) : List<BuiltInFn> =
         the response is wrapped in {{ Ok }} if a response was successfully
         received and parsed, and is wrapped in {{ Error }} otherwise"
       fn =
-        let responseType =
-          KTCustomType(FQTypeName.Package(typ [ "HttpClient" ] "Response" 0), [])
+        let typ =
+          FQTypeName.Package
+            { owner = "Darklang"
+              modules = [ "Stdlib"; "HttpClient" ]
+              name = "Response"
+              version = 0 }
+
+        let responseType = KTCustomType(typ, [])
         let resultOk = Dval.resultOk responseType KTString
         let typeName = RuntimeError.name [ "HttpClient" ] "RequestError" 0
         let resultError = Dval.resultError responseType (KTCustomType(typeName, []))

@@ -1075,7 +1075,7 @@ module UserType =
       |> Exception.unwrapResultInternal []
     let modules = moduleName @ names |> List.initial
 
-    { name = PT.TypeName.userProgram modules name version
+    { name = PT.FQTypeName.userProgram modules name version
       description = ""
       declaration = { definition = definition; typeParams = typeParams } }
 
@@ -1105,6 +1105,6 @@ module PackageConstant =
     (b : SynBinding)
     : WT.PackageConstant.T =
     let c = Constant.fromSynBinding b
-    { name = PT.ConstantName.package owner modules c.name c.version
+    { name = PT.FQConstantName.package owner modules c.name c.version
       description = ""
       body = c.body }

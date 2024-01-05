@@ -160,11 +160,12 @@ module FQFnName =
   //   : UserProgram =
   //   FQName.userProgram assert' modules (FnName name) version
 
-  // let fqUserProgram
-  //   (modules : List<string>)
-  //   (name : string)
-  //   (version : int)
-  //   : FnName =
+  let fqUserProgram
+    (modules : List<string>)
+    (name : string)
+    (version : int)
+    : FQFnName =
+    FQFnName.UserProgram { modules = modules; name = name; version = version }
   //   FQName.fqUserProgram assert' modules (FnName name) version
 
   // let package
@@ -185,11 +186,15 @@ module FQFnName =
     FQFnName.Package
       { owner = owner; modules = modules; name = name; version = version }
 
-  // let builtinToString (s : BuiltIn) : string =
-  //   FQName.builtinToString s (fun (FnName name) -> name)
-  // let userProgramToString (s : UserProgram) : string =
+  // let builtinToString (s : Builtin) (f : NamePrinter<'name>) : string =
+  let builtinToString (_s : Builtin) : string =
+    // let name = s.modules @ [ f s.name ] |> String.concat "."
+    // if s.version = 0 then name else $"{name}_v{s.version}"
+    "TODO"
+
+  let userProgramToString (_s : UserProgram) : string = "TODO"
   //   FQName.userProgramToString s (fun (FnName name) -> name)
-  // let packageToString (s : Package) : string =
+  let packageToString (_s : Package) : string = "TODO"
   //   FQName.packageToString s (fun (FnName name) -> name)
 
   let toString (_name : FQFnName) : string =

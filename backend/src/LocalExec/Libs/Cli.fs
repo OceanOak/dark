@@ -16,7 +16,7 @@ module Dval = LibExecution.Dval
 
 
 let builtIns : RT.BuiltIns =
-  let (fns, types, constants) =
+  let (fns, constants) =
     LibExecution.Builtin.combine
       [ BuiltinExecution.Builtin.contents
           BuiltinExecution.Libs.HttpClient.defaultConfig
@@ -24,8 +24,7 @@ let builtIns : RT.BuiltIns =
         BuiltinDarkInternal.Builtin.contents
         BuiltinCliHost.Builtin.contents ]
       []
-  { types = types |> Map.fromListBy _.name
-    fns = fns |> Map.fromListBy _.name
+  { fns = fns |> Map.fromListBy _.name
     constants = constants |> Map.fromListBy _.name }
 
 let packageManager : RT.PackageManager = RT.PackageManager.Empty

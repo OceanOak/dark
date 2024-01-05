@@ -148,20 +148,35 @@ module FQTypeName =
 
 
 
-  //   let assert' (TypeName name : Name) : unit =
-  //     assertRe "type name must match" pattern name
+  let assert' (_name : string) : unit =
+    // TODO
+    ()
+  // assertRe "type name must match" pattern name
+
+
+  //   let assert'
+  //     (modules : List<string>)
+  //     (name : 'name)
+  //     (version : int)
+  //     (nameValidator : 'name -> unit)
+  //     : unit =
+  //     List.iter (assertRe "modules name must match" modulePattern) modules
+  //     nameValidator name
+  //     assert_ "version can't be negative" [ "version", version ] (version >= 0)
+
   //   let builtIn (modules : List<string>) (name : string) (version : int) : BuiltIn =
   //     FQName.builtin assert' modules (TypeName name) version
 
   //   let fqBuiltIn (modules : List<string>) (name : string) (version : int) : TypeName =
   //     FQName.fqBuiltIn assert' modules (TypeName name) version
 
-  //   let userProgram
-  //     (modules : List<string>)
-  //     (name : string)
-  //     (version : int)
-  //     : UserProgram =
-  //     FQName.userProgram assert' modules (TypeName name) version
+  let userProgram
+    (modules : List<string>)
+    (name : string)
+    (version : int)
+    : UserProgram =
+    // assert' modules name version nameValidator
+    { modules = modules; name = name; version = version }
 
   //   let fqUserProgram
   //     (modules : List<string>)
@@ -170,13 +185,14 @@ module FQTypeName =
   //     : TypeName =
   //     FQName.fqUserProgram assert' modules (TypeName name) version
 
-  //   let package
-  //     (owner : string)
-  //     (modules : List<string>)
-  //     (name : string)
-  //     (version : int)
-  //     : Package =
-  //     FQName.package assert' owner modules (TypeName name) version
+  let package
+    (owner : string)
+    (modules : List<string>)
+    (name : string)
+    (version : int)
+    : Package =
+    // assert' modules name version nameValidator
+    { owner = owner; modules = modules; name = name; version = version }
 
   //   let fqPackage
   //     (owner : string)
@@ -219,6 +235,7 @@ module FQFnName =
     | Builtin of Builtin
     | Package of Package
     | UserProgram of UserProgram
+
 
 
   //   let oneWordFunctions =
@@ -296,46 +313,68 @@ module FQFnName =
 
 
 
+  let assert' (_name : string) : unit =
+    // TODO
+    //   assertRe "Fn name must match" pattern name
+    ()
 
 
-  //
-  // let assert' (FnName name : Name) : unit =
-  //   assertRe "Fn name must match" pattern name
 
-  // let builtIn (modules : List<string>) (name : string) (version : int) : BuiltIn =
-  //   FQName.builtin assert' modules (FnName name) version
+  let builtIn (modules : List<string>) (name : string) (version : int) : Builtin =
+    // FQName.builtin assert' modules (FnName name) version
+    { modules = modules; name = name; version = version }
 
-  // let fqBuiltIn (modules : List<string>) (name : string) (version : int) : FnName =
-  //   FQName.fqBuiltIn assert' modules (FnName name) version
 
-  // let userProgram
-  //   (modules : List<string>)
-  //   (name : string)
-  //   (version : int)
-  //   : UserProgram =
-  //   FQName.userProgram assert' modules (FnName name) version
+  //   let fqBuiltIn
+  //     (nameValidator : NameValidator<'name>)
+  //     (modules : List<string>)
+  //     (name : 'name)
+  //     (version : int)
+  //     : FQName<'name> =
+  //     BuiltIn(builtin nameValidator modules name version)
+  let fqBuiltIn (modules : List<string>) (name : string) (version : int) : FQFnName =
+    Builtin { modules = modules; name = name; version = version }
 
-  // let fqUserProgram
-  //   (modules : List<string>)
-  //   (name : string)
-  //   (version : int)
-  //   : FnName =
-  //   FQName.fqUserProgram assert' modules (FnName name) version
+  let userProgram
+    (modules : List<string>)
+    (name : string)
+    (version : int)
+    : UserProgram =
+    // assert' modules name version nameValidator
+    { modules = modules; name = name; version = version }
 
-  // let package
-  //   (owner : string)
-  //   (modules : List<string>)
-  //   (name : string)
-  //   (version : int)
-  //   : Package =
-  //   FQName.package assert' owner modules (FnName name) version
+  let fqUserProgram
+    (modules : List<string>)
+    (name : string)
+    (version : int)
+    : FQFnName =
+    UserProgram { modules = modules; name = name; version = version }
 
-  // let fqPackage
-  //   (owner : string)
-  //   (modules : List<string>)
-  //   (name : string)
-  //   (version : int)
-  //   : FnName =
+
+  //   let fqUserProgram
+  //     (nameValidator : NameValidator<'name>)
+  //     (modules : List<string>)
+  //     (name : 'name)
+  //     (version : int)
+  //     : FQName<'name> =
+  //     UserProgram(userProgram nameValidator modules name version)
+
+  let package
+    (owner : string)
+    (modules : List<string>)
+    (name : string)
+    (version : int)
+    : Package =
+    // assert' modules name version nameValidator
+    { owner = owner; modules = modules; name = name; version = version }
+
+  let fqPackage
+    (owner : string)
+    (modules : List<string>)
+    (name : string)
+    (version : int)
+    : FQFnName =
+    Package { owner = owner; modules = modules; name = name; version = version }
   //   FQName.fqPackage assert' owner modules (FnName name) version
 
   // let nameToString (FnName name) : string = name
@@ -376,22 +415,28 @@ module FQConstantName =
   // let assert' (ConstantName name : Name) : unit =
   //   assertRe "Constant name must match" pattern name
 
+  let assert' (_name : string) : unit =
+    // TODO
+    //   assertRe "Constant name must match" pattern name
+    ()
+
   // let builtIn (modules : List<string>) (name : string) (version : int) : BuiltIn =
   //   FQName.builtin assert' modules (ConstantName name) version
 
-  // let fqBuiltIn
-  //   (modules : List<string>)
-  //   (name : string)
-  //   (version : int)
-  //   : ConstantName =
-  //   FQName.fqBuiltIn assert' modules (ConstantName name) version
+  let fqBuiltIn
+    (modules : List<string>)
+    (name : string)
+    (version : int)
+    : FQConstantName =
+    Builtin { modules = modules; name = name; version = version }
 
-  // let userProgram
-  //   (modules : List<string>)
-  //   (name : string)
-  //   (version : int)
-  //   : UserProgram =
-  //   FQName.userProgram assert' modules (ConstantName name) version
+  let userProgram
+    (modules : List<string>)
+    (name : string)
+    (version : int)
+    : UserProgram =
+    // assert' modules name version nameValidator
+    { modules = modules; name = name; version = version }
 
   // let fqUserProgram
   //   (modules : List<string>)
@@ -400,13 +445,14 @@ module FQConstantName =
   //   : ConstantName =
   //   FQName.fqUserProgram assert' modules (ConstantName name) version
 
-  // let package
-  //   (owner : string)
-  //   (modules : List<string>)
-  //   (name : string)
-  //   (version : int)
-  //   : Package =
-  //   FQName.package assert' owner modules (ConstantName name) version
+  let package
+    (owner : string)
+    (modules : List<string>)
+    (name : string)
+    (version : int)
+    : Package =
+    // assert' modules name version nameValidator
+    { owner = owner; modules = modules; name = name; version = version }
 
   // let fqPackage
   //   (owner : string)

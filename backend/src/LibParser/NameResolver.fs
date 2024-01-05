@@ -12,8 +12,8 @@ module NRE = LibExecution.NameResolutionError
 
 type NameResolver =
   {
-    builtinFns : Set<PT.FQFnName.BuiltIn>
-    builtinConstants : Set<PT.FQConstantName.BuiltIn>
+    builtinFns : Set<PT.FQFnName.Builtin>
+    builtinConstants : Set<PT.FQConstantName.Builtin>
 
     userTypes : Set<PT.FQTypeName.UserProgram>
     userFns : Set<PT.FQFnName.UserProgram>
@@ -61,8 +61,8 @@ let empty : NameResolver =
 
 
 let create
-  (builtinFns : List<PT.FQFnName.BuiltIn>)
-  (builtinConstants : List<PT.FQConstantName.BuiltIn>)
+  (builtinFns : List<PT.FQFnName.Builtin>)
+  (builtinConstants : List<PT.FQConstantName.Builtin>)
   (userTypes : List<PT.FQTypeName.UserProgram>)
   (userFns : List<PT.FQFnName.UserProgram>)
   (userConstants : List<PT.FQConstantName.UserProgram>)
@@ -174,40 +174,28 @@ let fromExecutionState (state : RT.ExecutionState) : NameResolver =
 // avoid repeat work for package/modules, but it's also adding a lot of code and
 // complexity. Perhaps this changes when packages become identified by ID
 
-
-
-// Desired resolution order:
-// - 1. PACKAGE.* -> Exact package name
-// - 2. Check exact name is a user name
-// - 3. Check exact name is a builtin name
-// - 4. Check exact name in
-//   - a. current module
-//   - b. parent module(s)
-//   - c. darklang.stdlib package space // NOT IMPLEMENTED
-let resolve
-  (nameValidator : PT.FQName.NameValidator<'name>)
+let resolveTypeName
+  // (nameValidator : PT.NameValidator<'name>)
   (nameErrorType : NRE.NameType)
-  (constructor : string -> 'name)
+  // (constructor : string -> 'name) // should this be FQTypeName.FQTypeName?
   (parser : string -> Result<string * int, string>)
-  (builtinThings : Set<PT.FQName.BuiltIn<'name>>)
-  (userThings : Set<PT.FQName.UserProgram<'name>>)
-  (packageThingExists : RT.FQName.Package<'rtName> -> Ply<bool>)
-  (packageNameMapper : PT.FQName.Package<'name> -> RT.FQName.Package<'rtName>)
+  (userTypes : Set<PT.FQTypeName.UserProgram>)
+  (packageTypeExists : RT.FQTypeName.Package -> Ply<bool>)
+  (packageNameMapper : PT.FQTypeName.Package -> RT.FQTypeName.Package)
   (allowError : bool)
   (currentModule : List<string>)
   (name : WT.Name)
-  : Ply<PT.NameResolution<PT.FQName.FQName<'name>>> =
-
+  : Ply<PT.NameResolution<PT.FQTypeName.FQTypeName>> =
   uply {
-    // These are named exactly during parsing
     match name with
-    | WT.KnownBuiltin(modules, name, version) ->
-      return Ok(PT.FQName.fqBuiltIn nameValidator modules (constructor name) version)
-
+    | WT.KnownBuiltin(_modules, _name, _version) ->
+      // todo this is not supposed to happen as we don't allow builtin types
+      return
+        Error({ nameType = nameErrorType; errorType = NRE.NotFound; names = [] })
     | WT.Unresolved given ->
       let resolve
         (names : NEList<string>)
-        : Ply<PT.NameResolution<PT.FQName.FQName<'name>>> =
+        : Ply<PT.NameResolution<PT.FQTypeName.FQTypeName>> =
         uply {
           let (modules, name) = NEList.splitLast names
           match parser name with
@@ -221,31 +209,12 @@ let resolve
           | Ok(name, version) ->
             match modules with
             | "PACKAGE" :: owner :: modules ->
-              let name =
-                PT.FQName.package
-                  nameValidator
-                  owner
-                  modules
-                  (constructor name)
-                  version
+              let name = PT.FQTypeName.package owner modules name version
 
-              let! packageThingExists = packageThingExists (packageNameMapper name)
+              let! packageTypeExists = packageTypeExists (packageNameMapper name)
 
-              if packageThingExists then
-                return Ok(PT.FQName.FQName.Package name)
-              else
-                return
-                  Error(
-                    { nameType = nameErrorType
-                      errorType = NRE.NotFound
-                      names = NEList.toList names }
-                  )
-            | "Builtin" :: modules ->
-              let (builtIn : PT.FQName.BuiltIn<'name>) =
-                { modules = modules; name = constructor name; version = version }
-
-              if Set.contains builtIn builtinThings then
-                return Ok(PT.FQName.BuiltIn builtIn)
+              if packageTypeExists then
+                return Ok(PT.FQTypeName.FQTypeName.Package name)
               else
                 return
                   Error(
@@ -255,11 +224,11 @@ let resolve
                   )
             | _ ->
               // 2. Name exactly matches something in the UserProgram space
-              let (userProgram : PT.FQName.UserProgram<'name>) =
-                { modules = modules; name = constructor name; version = version }
+              let (userProgram : PT.FQTypeName.UserProgram) =
+                { modules = modules; name = name; version = version }
 
-              if Set.contains userProgram userThings then
-                return Ok(PT.FQName.UserProgram userProgram)
+              if Set.contains userProgram userTypes then
+                return Ok(PT.FQTypeName.UserProgram userProgram)
               else
                 return
                   Error(
@@ -293,7 +262,282 @@ let resolve
             (NEList.prependList modules given) :: loop rest
         loop currentModule
 
-      let! (result : PT.NameResolution<PT.FQName.FQName<'name>>) =
+      let! (result : PT.NameResolution<PT.FQTypeName.FQTypeName>) =
+        Ply.List.foldSequentially
+          (fun currentResult (pathToTry : NEList<string>) ->
+            match currentResult with
+            | Ok _ -> Ply currentResult
+            | Error _ ->
+              uply {
+                let! newResult = resolve pathToTry
+                match newResult with
+                | Ok _ -> return newResult
+                | Error _ -> return currentResult // keep the first error message
+              })
+          (Error
+            { nameType = nameErrorType
+              errorType = NRE.NotFound
+              names = NEList.toList given })
+          namesToTry
+
+      match result with
+      | Ok result -> return Ok result
+      | Error err ->
+        if not allowError then
+          return
+            Exception.raiseInternal
+              "Unresolved name when not allowed"
+              [ "namesToTry", namesToTry
+                "error", err
+                "given", given
+                "currentModule", currentModule ]
+        else
+          return Error err
+  }
+
+
+let resolveFnName
+  // (nameValidator : PT.NameValidator<'name>)
+  (nameErrorType : NRE.NameType)
+  // (constructor : string -> PT.FQFnName.FQFnName) // should this be FQTypeName.FQTypeName?
+  (parser : string -> Result<string * int, string>)
+  (builtinFns : Set<PT.FQFnName.Builtin>)
+  (userFns : Set<PT.FQFnName.UserProgram>)
+  (packageFnExists : RT.FQFnName.Package -> Ply<bool>)
+  (packageNameMapper : PT.FQFnName.Package -> RT.FQFnName.Package)
+  (allowError : bool)
+  (currentModule : List<string>)
+  (name : WT.Name)
+  : Ply<PT.NameResolution<PT.FQFnName.FQFnName>> =
+
+  uply {
+    // These are named exactly during parsing
+    match name with
+    | WT.KnownBuiltin(modules, name, version) ->
+      return Ok(PT.FQFnName.fqBuiltIn modules name version)
+
+    | WT.Unresolved given ->
+      let resolve
+        (names : NEList<string>)
+        : Ply<PT.NameResolution<PT.FQFnName.FQFnName>> =
+        uply {
+          let (modules, name) = NEList.splitLast names
+          match parser name with
+          | Error _msg ->
+            return
+              Error(
+                { nameType = nameErrorType
+                  errorType = NRE.InvalidPackageName
+                  names = NEList.toList names }
+              )
+          | Ok(name, version) ->
+            match modules with
+            | "PACKAGE" :: owner :: modules ->
+              let name = PT.FQFnName.package owner modules name version
+
+              let! packageFnExists = packageFnExists (packageNameMapper name)
+
+              if packageFnExists then
+                return Ok(PT.FQFnName.FQFnName.Package name)
+              else
+                return
+                  Error(
+                    { nameType = nameErrorType
+                      errorType = NRE.NotFound
+                      names = NEList.toList names }
+                  )
+            | "Builtin" :: modules ->
+              let (builtIn : PT.FQFnName.Builtin) =
+                { modules = modules; name = name; version = version }
+
+              if Set.contains builtIn builtinFns then
+                return Ok(PT.FQFnName.Builtin builtIn)
+              else
+                return
+                  Error(
+                    { nameType = nameErrorType
+                      errorType = NRE.NotFound
+                      names = NEList.toList names }
+                  )
+            | _ ->
+              // 2. Name exactly matches something in the UserProgram space
+              let (userProgram : PT.FQFnName.UserProgram) =
+                { modules = modules; name = name; version = version }
+
+              if Set.contains userProgram userFns then
+                return Ok(PT.FQFnName.UserProgram userProgram)
+              else
+                return
+                  Error(
+                    { nameType = nameErrorType
+                      errorType = NRE.NotFound
+                      names = NEList.toList names }
+                  )
+        }
+
+      // 4. Check name in
+      //   - a. exact name
+      //   - b. current module
+      //   - c. parent module(s)
+      //   - d. darklang.stdlib package space // NOT IMPLEMENTED
+
+      // Look in the current module and all parent modules
+      // for X.Y, and current module A.B.C, try in the following order
+      // A.B.C.X.Y
+      // A.B.X.Y
+      // A.X.Y
+      // X.Y
+
+      // List of locations to try and find the name
+      // i.e. PACKAGE.[owner], PACKAGE.[owner].[module1]
+      let namesToTry : List<NEList<string>> =
+        let rec loop (modules : List<string>) : List<NEList<string>> =
+          match modules with
+          | [] -> [ given ]
+          | _ ->
+            let rest = List.initial modules
+            (NEList.prependList modules given) :: loop rest
+        loop currentModule
+
+      let! (result : PT.NameResolution<PT.FQFnName.FQFnName>) =
+        Ply.List.foldSequentially
+          (fun currentResult (pathToTry : NEList<string>) ->
+            match currentResult with
+            | Ok _ -> Ply currentResult
+            | Error _ ->
+              uply {
+                let! newResult = resolve pathToTry
+                match newResult with
+                | Ok _ -> return newResult
+                | Error _ -> return currentResult // keep the first error message
+              })
+          (Error
+            { nameType = nameErrorType
+              errorType = NRE.NotFound
+              names = NEList.toList given })
+          namesToTry
+
+      match result with
+      | Ok result -> return Ok result
+      | Error err ->
+        if not allowError then
+          return
+            Exception.raiseInternal
+              "Unresolved name when not allowed"
+              [ "namesToTry", namesToTry
+                "error", err
+                "given", given
+                "currentModule", currentModule ]
+        else
+          return Error err
+  }
+
+
+let resolveConstantName
+  // (nameValidator : PT.NameValidator<'name>)
+  (nameErrorType : NRE.NameType)
+  // (constructor : string -> PT.FQConstantName.FQConstantName) // should this be FQCOnstantName.FQConstantName?
+  (parser : string -> Result<string * int, string>)
+  (builtinConstants : Set<PT.FQConstantName.Builtin>)
+  (userConstants : Set<PT.FQConstantName.UserProgram>)
+  (packageConstantExists : RT.FQConstantName.Package -> Ply<bool>)
+  (packageNameMapper : PT.FQConstantName.Package -> RT.FQConstantName.Package)
+  (allowError : bool)
+  (currentModule : List<string>)
+  (name : WT.Name)
+  : Ply<PT.NameResolution<PT.FQConstantName.FQConstantName>> =
+
+  uply {
+    // These are named exactly during parsing
+    match name with
+    | WT.KnownBuiltin(modules, name, version) ->
+      return Ok(PT.FQConstantName.fqBuiltIn modules name version)
+
+    | WT.Unresolved given ->
+      let resolve
+        (names : NEList<string>)
+        : Ply<PT.NameResolution<PT.FQConstantName.FQConstantName>> =
+        uply {
+          let (modules, name) = NEList.splitLast names
+          match parser name with
+          | Error _msg ->
+            return
+              Error(
+                { nameType = nameErrorType
+                  errorType = NRE.InvalidPackageName
+                  names = NEList.toList names }
+              )
+          | Ok(name, version) ->
+            match modules with
+            | "PACKAGE" :: owner :: modules ->
+              let name = PT.FQConstantName.package owner modules name version
+
+              let! packageConstantExists =
+                packageConstantExists (packageNameMapper name)
+
+              if packageConstantExists then
+                return Ok(PT.FQConstantName.FQConstantName.Package name)
+              else
+                return
+                  Error(
+                    { nameType = nameErrorType
+                      errorType = NRE.NotFound
+                      names = NEList.toList names }
+                  )
+            | "Builtin" :: modules ->
+              let (builtIn : PT.FQConstantName.Builtin) =
+                { modules = modules; name = name; version = version }
+
+              if Set.contains builtIn builtinConstants then
+                return Ok(PT.FQConstantName.Builtin builtIn)
+              else
+                return
+                  Error(
+                    { nameType = nameErrorType
+                      errorType = NRE.NotFound
+                      names = NEList.toList names }
+                  )
+            | _ ->
+              // 2. Name exactly matches something in the UserProgram space
+              let (userProgram : PT.FQConstantName.UserProgram) =
+                { modules = modules; name = name; version = version }
+
+              if Set.contains userProgram userConstants then
+                return Ok(PT.FQConstantName.UserProgram userProgram)
+              else
+                return
+                  Error(
+                    { nameType = nameErrorType
+                      errorType = NRE.NotFound
+                      names = NEList.toList names }
+                  )
+        }
+
+      // 4. Check name in
+      //   - a. exact name
+      //   - b. current module
+      //   - c. parent module(s)
+      //   - d. darklang.stdlib package space // NOT IMPLEMENTED
+
+      // Look in the current module and all parent modules
+      // for X.Y, and current module A.B.C, try in the following order
+      // A.B.C.X.Y
+      // A.B.X.Y
+      // A.X.Y
+      // X.Y
+
+      // List of locations to try and find the name
+      // i.e. PACKAGE.[owner], PACKAGE.[owner].[module1]
+      let namesToTry : List<NEList<string>> =
+        let rec loop (modules : List<string>) : List<NEList<string>> =
+          match modules with
+          | [] -> [ given ]
+          | _ ->
+            let rest = List.initial modules
+            (NEList.prependList modules given) :: loop rest
+        loop currentModule
+
+      let! (result : PT.NameResolution<PT.FQConstantName.FQConstantName>) =
         Ply.List.foldSequentially
           (fun currentResult (pathToTry : NEList<string>) ->
             match currentResult with
@@ -348,13 +592,12 @@ module TypeName =
     (currentModule : List<string>)
     (name : WT.Name)
     : Ply<PT.NameResolution<PT.FQTypeName.FQTypeName>> =
-    resolve
-      PT.FQTypeName.assert'
+    resolveTypeName
+      // PT.FQTypeName.assert'
       NRE.Type
-      PT.FQTypeName.FQTypeName
+      // PT.FQTypeName.FQTypeName
       // TODO: move parsing fn into PT or WT
       FS2WT.Expr.parseTypeName
-      Set.empty
       resolver.userTypes
       (packageTypeExists
         resolver.packageManager
@@ -369,18 +612,17 @@ module TypeName =
     (currentModule : List<string>)
     (name : WT.Name)
     : Ply<PT.NameResolution<PT.FQTypeName.FQTypeName>> =
-    resolve
-      PT.FQTypeName.assert'
+    resolveTypeName
+      // PT.FQTypeName.assert'
       NRE.Type
-      PT.FQTypeName.FQTypeName
+      // PT.FQTypeName.FQTypeName
       // TODO: move parsing fn into PT or WT
       FS2WT.Expr.parseTypeName
-      Set.empty
       resolver.userTypes
       (packageTypeExists
         resolver.packageManager
         resolver.hackLocallyDefinedPackageTypes)
-      PT2RT.TypeName.Package.toRT
+      PT2RT.FQTypeName.Package.toRT
       resolver.allowError
       currentModule
       name
@@ -404,11 +646,11 @@ module FnName =
     (resolver : NameResolver)
     (currentModule : List<string>)
     (name : WT.Name)
-    : Ply<PT.NameResolution<PT.FQFnName.FnName>> =
-    resolve
-      PT.FQFnName.assert'
+    : Ply<PT.NameResolution<PT.FQFnName.FQFnName>> =
+    resolveFnName
+      // PT.FQFnName.assert'
       NRE.Function
-      PT.FQFnName.FQFnName
+      // PT.FQFnName.FQFnName
       // TODO: move parsing fn into PT or WT
       FS2WT.Expr.parseFn
       resolver.builtinFns
@@ -424,10 +666,10 @@ module FnName =
     (currentModule : List<string>)
     (name : WT.Name)
     : Ply<PT.NameResolution<PT.FQFnName.FQFnName>> =
-    resolve
-      PT.FQFnName.assert'
+    resolveFnName
+      // PT.FQFnName.assert'
       NRE.Function
-      PT.FQFnName.FQFnName
+      // PT.FQFnName.FQFnName
       // TODO: move parsing fn into PT or WT
       FS2WT.Expr.parseFn
       resolver.builtinFns
@@ -441,8 +683,8 @@ module FnName =
 module ConstantName =
   let packageConstExists
     (pm : Option<RT.PackageManager>)
-    (hackLocallyDefinedPackageConstants : Set<RT.ConstantName.Package>)
-    (constName : RT.ConstantName.Package)
+    (hackLocallyDefinedPackageConstants : Set<RT.FQConstantName.Package>)
+    (constName : RT.FQConstantName.Package)
     : Ply<bool> =
     uply {
       match pm with
@@ -459,10 +701,10 @@ module ConstantName =
     (currentModule : List<string>)
     (name : WT.Name)
     : Ply<PT.NameResolution<PT.FQConstantName.FQConstantName>> =
-    resolve
-      PT.FQConstantName.assert'
+    resolveConstantName
+      // PT.FQConstantName.assert'
       NRE.Constant
-      PT.FQConstantName.FQConstantName
+      // PT.FQConstantName.FQConstantName
       FS2WT.Expr.parseFn // same format
       resolver.builtinConstants
       resolver.userConstants
@@ -479,10 +721,10 @@ module ConstantName =
     (currentModule : List<string>)
     (name : WT.Name)
     : Ply<PT.NameResolution<PT.FQConstantName.FQConstantName>> =
-    resolve
-      PT.FQConstantName.assert'
+    resolveConstantName
+      // PT.FQConstantName.assert'
       NRE.Constant
-      PT.FQConstantName.FQConstantName
+      // PT.FQConstantName.FQConstantName
       FS2WT.Expr.parseFn // same format
       resolver.builtinConstants
       resolver.userConstants

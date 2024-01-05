@@ -19,6 +19,11 @@ module WT = LibParser.WrittenTypes
 module Json = BuiltinExecution.Libs.Json
 
 
+let typ =
+  FQTypeName.Package
+    { owner = "Darklang"; modules = [ "Cli" ]; name = "ExecutionError"; version = 0 }
+
+
 module CliRuntimeError =
   open Prelude
 
@@ -62,7 +67,7 @@ let libExecutionContents =
   BuiltinExecution.Builtin.contents BuiltinExecution.Libs.HttpClient.defaultConfig
 
 let builtIns : RT.BuiltIns =
-  let (fns, types, constants) =
+  let (fns, constants) =
     LibExecution.Builtin.combine
       [ libExecutionContents; BuiltinCli.Builtin.contents ]
       []
@@ -121,15 +126,11 @@ let fns : List<BuiltInFn> =
         [ Param.make "filename" TString ""
           Param.make "code" TString ""
           Param.make "symtable" (TDict TString) "" ]
-      returnType =
-        TypeReference.result
-          TInt64
-          (TCustomType(Ok(FQTypeName.Package(typ [ "Cli" ] "ExecutionError" 0)), []))
+      returnType = TypeReference.result TInt64 (TCustomType(Ok(typ), []))
       description =
         "Parses Dark code as a script, and and executes it, returning an exit code"
       fn =
-        let errType =
-          KTCustomType(FQTypeName.Package(typ [ "Cli" ] "ExecutionError" 0), [])
+        let errType = KTCustomType(typ, [])
         let resultOk = Dval.resultOk KTInt64 errType
         let resultError = Dval.resultError KTInt64 errType
         (function
@@ -180,14 +181,10 @@ let fns : List<BuiltInFn> =
       parameters =
         [ Param.make "functionName" TString ""
           Param.make "args" (TList TString) "" ]
-      returnType =
-        TypeReference.result
-          TString
-          (TCustomType(Ok(FQTypeName.Package(typ [ "Cli" ] "ExecutionError" 0)), []))
+      returnType = TypeReference.result TString (TCustomType(Ok(typ), []))
       description = "Executes an arbitrary Dark package function"
       fn =
-        let errType =
-          KTCustomType(FQTypeName.Package(typ [ "Cli" ] "ExecutionError" 0), [])
+        let errType = KTCustomType(typ, [])
         let resultOk = Dval.resultOk KTString errType
         let resultError = Dval.resultError KTString errType
 
@@ -203,7 +200,7 @@ let fns : List<BuiltInFn> =
                      metadata |> List.map (Tuple2.mapSecond DString) |> Map
                    )) ]
 
-              let typeName = FQTypeName.Package(typ [ "Cli" ] "ExecutionError" 0)
+              let typeName = typ
               DRecord(typeName, typeName, [], Map fields) |> resultError
 
             let exnError (e : exn) : Dval =
@@ -321,25 +318,21 @@ let fns : List<BuiltInFn> =
             (TList(
               TCustomType(
                 Ok(
-                  FQName.Package
+                  FQTypeName.Package
                     { owner = "Darklang"
                       modules = [ "LanguageTools"; "ProgramTypes" ]
-                      name = TypeName.TypeName "Expr"
+                      name = "Expr"
                       version = 0 }
                 ),
                 []
               )
             ))
             "" ]
-      returnType =
-        TypeReference.result
-          TString
-          (TCustomType(Ok(FQTypeName.Package(typ [ "Cli" ] "ExecutionError" 0)), []))
+      returnType = TypeReference.result TString (TCustomType(Ok(typ), []))
       description =
         "Executes an arbitrary Dark package function using the new darklang parser"
       fn =
-        let errType =
-          KTCustomType(FQTypeName.Package(typ [ "Cli" ] "ExecutionError" 0), [])
+        let errType = KTCustomType(typ, [])
         let resultOk = Dval.resultOk KTString errType
         let resultError = Dval.resultError KTString errType
 
@@ -355,7 +348,7 @@ let fns : List<BuiltInFn> =
                      metadata |> List.map (Tuple2.mapSecond DString) |> Map
                    )) ]
 
-              let typeName = FQTypeName.Package(typ [ "Cli" ] "ExecutionError" 0)
+              let typeName = typ
               DRecord(typeName, typeName, [], Map fields) |> resultError
 
             let exnError (e : exn) : Dval =

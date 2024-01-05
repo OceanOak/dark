@@ -37,18 +37,23 @@ let resolver : LibParser.NameResolver.NameResolver =
         allowError = false
         builtinFns =
           Set
-            [ LibExecution.ProgramTypes.FnName.builtIn
+            [ LibExecution.ProgramTypes.FQFnName.builtIn
                 [ "LocalExec"; "Packages" ]
                 "parseAndSave"
                 0
-              LibExecution.ProgramTypes.FnName.builtIn
+              LibExecution.ProgramTypes.FQFnName.builtIn
                 [ "LocalExec"; "Packages" ]
                 "parse"
                 0 ] }
 
   LibParser.NameResolver.merge builtinResolver thisResolver (Some packageManager)
 
-
+let typ =
+  FQTypeName.Package
+    { owner = "Darklang"
+      modules = [ "LocalExec"; "Packages" ]
+      name = "Packages"
+      version = 0 }
 
 let fns : List<BuiltInFn> =
   [ { name = fn [ "LocalExec"; "Packages" ] "parse" 0
@@ -56,13 +61,7 @@ let fns : List<BuiltInFn> =
       parameters =
         [ Param.make "package source" TString "The source code of the package"
           Param.make "filename" TString "Used for error message" ]
-      returnType =
-        TypeReference.result
-          (TCustomType(
-            Ok(FQName.BuiltIn(typ [ "LocalExec"; "Packages" ] "Package" 0)),
-            []
-          ))
-          TString
+      returnType = TypeReference.result (TCustomType(Ok(typ), [])) TString
       description = "Parse a package"
       fn =
         function
@@ -75,8 +74,7 @@ let fns : List<BuiltInFn> =
             let packagesTypes = types |> List.map PT2DT.PackageType.toDT
             let packagesConstants = constants |> List.map PT2DT.PackageConstant.toDT
 
-            let typeName =
-              FQName.BuiltIn(typ [ "LocalExec"; "Packages" ] "Package" 0)
+            let typeName = typ
             let fields =
               [ "fns", DList(VT.customType PT2DT.PackageFn.typeName [], packagesFns)
                 "types",
@@ -96,4 +94,4 @@ let fns : List<BuiltInFn> =
       deprecated = NotDeprecated } ]
 
 
-let contents : LibExecution.Builtin.Contents = (fns, [], [])
+let contents : LibExecution.Builtin.Contents = (fns, [])
