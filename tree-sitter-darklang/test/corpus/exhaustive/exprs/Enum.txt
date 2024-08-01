@@ -159,9 +159,7 @@ Stdlib.Option.Option.Some
         (qualified_type_name (module_identifier) (symbol) (module_identifier) (symbol) (type_identifier))
         (symbol)
         (enum_case_identifier)
-        (indent)
-        (enum_fields (expression (simple_expression (int64_literal (digits (positive_digits)) (symbol)))))
-        (dedent)
+        (enum_fields (indent) (expression (simple_expression (int64_literal (digits (positive_digits)) (symbol)))) (dedent))
       )
     )
   )
@@ -184,12 +182,12 @@ MyEnum.TwoArgs
     (simple_expression
       (enum_literal
         (qualified_type_name (type_identifier)) (symbol) (enum_case_identifier)
-        (indent)
         (enum_fields
+          (indent)
           (expression (simple_expression (int64_literal (digits (positive_digits)) (symbol))))
           (expression (simple_expression (int64_literal (digits (positive_digits)) (symbol))))
+          (dedent)
         )
-        (dedent)
       )
     )
   )

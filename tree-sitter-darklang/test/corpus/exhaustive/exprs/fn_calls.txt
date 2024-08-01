@@ -386,7 +386,6 @@ Builtin.printLine Stdlib.Option.Option.Some 1L
           )
         )
       )
-      (newline)
     )
   )
 )
@@ -559,3 +558,43 @@ Stdlib.Tuple3.mapAllThree
     )
   )
 )
+
+
+==================
+test
+==================
+
+let fn = Stdlib.Int64.add
+fn 3L 4L
+
+---
+
+(source_file
+  (expression
+    (let_expression
+      (keyword)
+      (let_pattern (variable_identifier))
+      (symbol)
+      (expression
+        (simple_expression
+          (qualified_const_name
+            (module_identifier)
+            (symbol)
+            (module_identifier)
+            (symbol)
+            (constant_identifier))))
+      (expression
+        (apply
+          (qualified_fn_name
+            (fn_identifier))
+          (simple_expression
+            (int64_literal
+              (digits
+                (positive_digits))
+              (symbol)))
+          (simple_expression
+            (int64_literal
+              (digits
+                (positive_digits))
+              (symbol)))
+          (newline))))))

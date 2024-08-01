@@ -285,11 +285,11 @@ Enum List
                 (qualified_type_name (module_identifier) (symbol) (type_identifier))
                 (symbol)
                 (enum_case_identifier)
-                (indent)
                 (enum_fields
+                  (indent)
                   (expression (simple_expression (string_segment (string_literal (symbol) (string_content) (symbol)))))
+                  (dedent)
                 )
-                (dedent)
               )
             )
           )

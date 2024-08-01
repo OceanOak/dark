@@ -319,6 +319,7 @@ module.exports = grammar({
     // match pattern - list cons
     mp_list_cons: $ =>
       prec.left(
+        1,
         seq(
           field("head", $.match_pattern),
           field("symbol_double_colon", alias("::", $.symbol)),
@@ -1152,12 +1153,8 @@ function enum_literal_base($, enum_fields) {
       field("type_name", $.qualified_type_name),
       field("symbol_dot", alias(".", $.symbol)),
       field("case_name", $.enum_case_identifier),
-      optional(
-        choice(
-          seq($.indent, field("enum_fields", enum_fields), $.dedent),
-          field("enum_fields", enum_fields),
-        ),
-      ),
+      optional(field("enum_fields", enum_fields)),
+      optional(/\n/),
     ),
   );
 }
@@ -1177,7 +1174,8 @@ function enum_fields_base($, fields) {
         ),
         field("symbol_close_paren", alias(")", $.symbol)),
       ),
-      prec.right(repeat1(prec.right(fields))),
+      seq($.indent, seq(fields, repeat(seq(/\n/, fields))), $.dedent),
+      prec.right(repeat1(fields)),
     ),
   );
 }

@@ -781,38 +781,24 @@
             "type": "CHOICE",
             "members": [
               {
-                "type": "CHOICE",
-                "members": [
-                  {
-                    "type": "SEQ",
-                    "members": [
-                      {
-                        "type": "SYMBOL",
-                        "name": "indent"
-                      },
-                      {
-                        "type": "FIELD",
-                        "name": "enum_fields",
-                        "content": {
-                          "type": "SYMBOL",
-                          "name": "const_enum_fields"
-                        }
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "dedent"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "FIELD",
-                    "name": "enum_fields",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "const_enum_fields"
-                    }
-                  }
-                ]
+                "type": "FIELD",
+                "name": "enum_fields",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "const_enum_fields"
+                }
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "PATTERN",
+                "value": "\\n"
               },
               {
                 "type": "BLANK"
@@ -898,17 +884,51 @@
             ]
           },
           {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "indent"
+              },
+              {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "consts"
+                  },
+                  {
+                    "type": "REPEAT",
+                    "content": {
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "PATTERN",
+                          "value": "\\n"
+                        },
+                        {
+                          "type": "SYMBOL",
+                          "name": "consts"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "SYMBOL",
+                "name": "dedent"
+              }
+            ]
+          },
+          {
             "type": "PREC_RIGHT",
             "value": 0,
             "content": {
               "type": "REPEAT1",
               "content": {
-                "type": "PREC_RIGHT",
-                "value": 0,
-                "content": {
-                  "type": "SYMBOL",
-                  "name": "consts"
-                }
+                "type": "SYMBOL",
+                "name": "consts"
               }
             }
           }
@@ -1929,7 +1949,7 @@
     },
     "mp_list_cons": {
       "type": "PREC_LEFT",
-      "value": 0,
+      "value": 1,
       "content": {
         "type": "SEQ",
         "members": [
@@ -2179,17 +2199,51 @@
             ]
           },
           {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "indent"
+              },
+              {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "match_pattern"
+                  },
+                  {
+                    "type": "REPEAT",
+                    "content": {
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "PATTERN",
+                          "value": "\\n"
+                        },
+                        {
+                          "type": "SYMBOL",
+                          "name": "match_pattern"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "SYMBOL",
+                "name": "dedent"
+              }
+            ]
+          },
+          {
             "type": "PREC_RIGHT",
             "value": 0,
             "content": {
               "type": "REPEAT1",
               "content": {
-                "type": "PREC_RIGHT",
-                "value": 0,
-                "content": {
-                  "type": "SYMBOL",
-                  "name": "match_pattern"
-                }
+                "type": "SYMBOL",
+                "name": "match_pattern"
               }
             }
           }
@@ -4039,38 +4093,24 @@
             "type": "CHOICE",
             "members": [
               {
-                "type": "CHOICE",
-                "members": [
-                  {
-                    "type": "SEQ",
-                    "members": [
-                      {
-                        "type": "SYMBOL",
-                        "name": "indent"
-                      },
-                      {
-                        "type": "FIELD",
-                        "name": "enum_fields",
-                        "content": {
-                          "type": "SYMBOL",
-                          "name": "enum_fields"
-                        }
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "dedent"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "FIELD",
-                    "name": "enum_fields",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "enum_fields"
-                    }
-                  }
-                ]
+                "type": "FIELD",
+                "name": "enum_fields",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "enum_fields"
+                }
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "PATTERN",
+                "value": "\\n"
               },
               {
                 "type": "BLANK"
@@ -4156,17 +4196,51 @@
             ]
           },
           {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "indent"
+              },
+              {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "expression"
+                  },
+                  {
+                    "type": "REPEAT",
+                    "content": {
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "PATTERN",
+                          "value": "\\n"
+                        },
+                        {
+                          "type": "SYMBOL",
+                          "name": "expression"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "SYMBOL",
+                "name": "dedent"
+              }
+            ]
+          },
+          {
             "type": "PREC_RIGHT",
             "value": 0,
             "content": {
               "type": "REPEAT1",
               "content": {
-                "type": "PREC_RIGHT",
-                "value": 0,
-                "content": {
-                  "type": "SYMBOL",
-                  "name": "expression"
-                }
+                "type": "SYMBOL",
+                "name": "expression"
               }
             }
           }
@@ -5174,38 +5248,24 @@
             "type": "CHOICE",
             "members": [
               {
-                "type": "CHOICE",
-                "members": [
-                  {
-                    "type": "SEQ",
-                    "members": [
-                      {
-                        "type": "SYMBOL",
-                        "name": "indent"
-                      },
-                      {
-                        "type": "FIELD",
-                        "name": "enum_fields",
-                        "content": {
-                          "type": "SYMBOL",
-                          "name": "pipe_enum_fields"
-                        }
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "dedent"
-                      }
-                    ]
-                  },
-                  {
-                    "type": "FIELD",
-                    "name": "enum_fields",
-                    "content": {
-                      "type": "SYMBOL",
-                      "name": "pipe_enum_fields"
-                    }
-                  }
-                ]
+                "type": "FIELD",
+                "name": "enum_fields",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "pipe_enum_fields"
+                }
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "PATTERN",
+                "value": "\\n"
               },
               {
                 "type": "BLANK"
@@ -5291,17 +5351,51 @@
             ]
           },
           {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "indent"
+              },
+              {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "expression"
+                  },
+                  {
+                    "type": "REPEAT",
+                    "content": {
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "PATTERN",
+                          "value": "\\n"
+                        },
+                        {
+                          "type": "SYMBOL",
+                          "name": "expression"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "SYMBOL",
+                "name": "dedent"
+              }
+            ]
+          },
+          {
             "type": "PREC_RIGHT",
             "value": 0,
             "content": {
               "type": "REPEAT1",
               "content": {
-                "type": "PREC_RIGHT",
-                "value": 0,
-                "content": {
-                  "type": "SYMBOL",
-                  "name": "expression"
-                }
+                "type": "SYMBOL",
+                "name": "expression"
               }
             }
           }
