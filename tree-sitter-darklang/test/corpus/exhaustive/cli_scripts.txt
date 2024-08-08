@@ -102,3 +102,87 @@ helloworld ()
     (apply (qualified_fn_name (fn_identifier)) (simple_expression (unit)) (newline))
   )
 )
+
+
+==================
+test
+==================
+
+Stdlib.UInt128.parse "1" == Stdlib.Result.Result.Ok(1Z)
+Stdlib.UInt128.parse "1" == Stdlib.Result.Result.Ok(1Z)
+
+---
+
+   (source_file
+      (expression
+        (infix_operation
+          (expression
+            (apply
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (module_identifier)
+                (symbol)
+                (fn_identifier))
+              (simple_expression
+                (string_segment
+                  (string_literal
+                    (symbol)
+                    (string_content)
+                    (symbol))))))
+          (operator)
+          (expression
+            (simple_expression
+              (enum_literal
+                (qualified_type_name
+                  (module_identifier)
+                  (symbol)
+                  (module_identifier)
+                  (symbol)
+                  (type_identifier))
+                (symbol)
+                (enum_case_identifier)
+                (enum_fields
+                  (symbol)
+                  (expression
+                    (simple_expression
+                      (uint128_literal
+                        (positive_digits)
+                        (symbol))))
+                  (symbol)))))))
+      (expression
+        (infix_operation
+          (expression
+            (apply
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (module_identifier)
+                (symbol)
+                (fn_identifier))
+              (simple_expression
+                (string_segment
+                  (string_literal
+                    (symbol)
+                    (string_content)
+                    (symbol))))))
+          (operator)
+          (expression
+            (simple_expression
+              (enum_literal
+                (qualified_type_name
+                  (module_identifier)
+                  (symbol)
+                  (module_identifier)
+                  (symbol)
+                  (type_identifier))
+                (symbol)
+                (enum_case_identifier)
+                (enum_fields
+                  (symbol)
+                  (expression
+                    (simple_expression
+                      (uint128_literal
+                        (positive_digits)
+                        (symbol))))
+                  (symbol))))))))

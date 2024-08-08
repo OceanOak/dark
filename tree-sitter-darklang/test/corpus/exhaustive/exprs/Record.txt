@@ -199,3 +199,17 @@ Person {
     )
   )
 )
+
+
+==================
+test
+==================
+
+(Stdlib.Html.script
+  [ ("src", Stdlib.Option.Option.Some "https://cdn.tailwindcss.com") ]
+  []
+)
+|> nodeToString
+== "<script src=\"https://cdn.tailwindcss.com\"></script>"
+
+---

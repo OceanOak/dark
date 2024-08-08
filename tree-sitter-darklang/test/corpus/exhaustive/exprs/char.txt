@@ -22,3 +22,286 @@ escape sequence
 (source_file
   (expression
     (simple_expression (char_literal (symbol) (character (char_or_string_escape_sequence)) (symbol)))))
+
+
+==================
+test
+==================
+let smiley () : Char =
+  "😂" |> Stdlib.String.head |> Builtin.unwrap
+
+Stdlib.Char.toLowercase 'A' == 'a'
+Stdlib.Char.toLowercase 'a' == 'a'
+// Stdlib.Char.toLowercase 'Á' == 'á'
+Stdlib.Char.toLowercase '3' == '3'
+// Stdlib.Char.toLowercase (smiley ()) == smiley ()
+// Stdlib.Char.toLowercase 'Ż' == 'ż'
+// Stdlib.Char.toLowercase 'Ó' == 'ó'
+// Stdlib.Char.toLowercase 'Ł' == 'ł'
+// Stdlib.Char.toLowercase (hand ()) == hand ()
+// Stdlib.Char.toLowercase 'Ჾ' == 'ჾ'
+// Stdlib.Char.toLowercase 'ჾ' == 'ჾ'
+
+
+Stdlib.Char.toUppercase 'a' == 'A'
+Stdlib.Char.toUppercase 'A' == 'A'
+// Stdlib.Char.toUppercase 'á' == 'Á'
+Stdlib.Char.toUppercase '3' == '3'
+// Stdlib.Char.toUppercase (smiley ()) == smiley ()
+// Stdlib.Char.toUppercase 'ż' == 'Ż'
+// Stdlib.Char.toUppercase 'ó' == 'Ó'
+// Stdlib.Char.toUppercase 'ł' == 'Ł'
+// Stdlib.Char.toUppercase (hand ()) == hand ()
+// Stdlib.Char.toUppercase 'ჾ' == 'Ჾ'
+// Stdlib.Char.toUppercase 'Ჾ' == 'Ჾ'
+
+
+Stdlib.Char.isLowercase 'a' == true
+Stdlib.Char.isLowercase 'A' == false
+// Stdlib.Char.isLowercase 'á' == true
+// Stdlib.Char.isLowercase 'Á' == false
+Stdlib.Char.isLowercase '3' == false
+// Stdlib.Char.isLowercase (smiley ()) == false
+// Stdlib.Char.isLowercase 'ż' == true
+// Stdlib.Char.isLowercase 'Ż' == false
+// Stdlib.Char.isLowercase 'ó' == true
+// Stdlib.Char.isLowercase 'Ó' == false
+// Stdlib.Char.isLowercase 'ł' == true
+// Stdlib.Char.isLowercase 'Ł' == false
+// Stdlib.Char.isLowercase (hand ()) == false
+// Stdlib.Char.isLowercase 'ჾ' == true
+// Stdlib.Char.isLowercase 'Ჾ' == false
+
+
+---
+
+(source_file
+      (fn_decl
+        (keyword)
+        (fn_identifier)
+        (fn_decl_params
+          (unit))
+        (symbol)
+        (type_reference
+          (builtin_type))
+        (symbol)
+        (indent)
+        (expression
+          (pipe_expression
+            (expression
+              (pipe_expression
+                (expression
+                  (simple_expression
+                    (string_segment
+                      (string_literal
+                        (symbol)
+                        (string_content)
+                        (symbol)))))
+                (pipe_exprs
+                  (symbol)
+                  (pipe_expr
+                    (pipe_fn_call
+                      (qualified_fn_name
+                        (module_identifier)
+                        (symbol)
+                        (module_identifier)
+                        (symbol)
+                        (fn_identifier)))))))
+            (pipe_exprs
+              (symbol)
+              (pipe_expr
+                (pipe_fn_call
+                  (qualified_fn_name
+                    (module_identifier)
+                    (symbol)
+                    (fn_identifier)))))))
+        (dedent))
+      (expression
+        (infix_operation
+          (expression
+            (apply
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (module_identifier)
+                (symbol)
+                (fn_identifier))
+              (simple_expression
+                (char_literal
+                  (symbol)
+                  (character)
+                  (symbol)))))
+          (operator)
+          (expression
+            (simple_expression
+              (char_literal
+                (symbol)
+                (character)
+                (symbol))))))
+      (expression
+        (infix_operation
+          (expression
+            (apply
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (module_identifier)
+                (symbol)
+                (fn_identifier))
+              (simple_expression
+                (char_literal
+                  (symbol)
+                  (character)
+                  (symbol)))))
+          (operator)
+          (expression
+            (simple_expression
+              (char_literal
+                (symbol)
+                (character)
+                (symbol))))))
+      (expression
+        (infix_operation
+          (expression
+            (apply
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (module_identifier)
+                (symbol)
+                (fn_identifier))
+              (simple_expression
+                (char_literal
+                  (symbol)
+                  (character)
+                  (symbol)))))
+          (operator)
+          (expression
+            (simple_expression
+              (char_literal
+                (symbol)
+                (character)
+                (symbol))))))
+      (expression
+        (infix_operation
+          (expression
+            (apply
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (module_identifier)
+                (symbol)
+                (fn_identifier))
+              (simple_expression
+                (char_literal
+                  (symbol)
+                  (character)
+                  (symbol)))))
+          (operator)
+          (expression
+            (simple_expression
+              (char_literal
+                (symbol)
+                (character)
+                (symbol))))))
+      (expression
+        (infix_operation
+          (expression
+            (apply
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (module_identifier)
+                (symbol)
+                (fn_identifier))
+              (simple_expression
+                (char_literal
+                  (symbol)
+                  (character)
+                  (symbol)))))
+          (operator)
+          (expression
+            (simple_expression
+              (char_literal
+                (symbol)
+                (character)
+                (symbol))))))
+      (expression
+        (infix_operation
+          (expression
+            (apply
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (module_identifier)
+                (symbol)
+                (fn_identifier))
+              (simple_expression
+                (char_literal
+                  (symbol)
+                  (character)
+                  (symbol)))))
+          (operator)
+          (expression
+            (simple_expression
+              (char_literal
+                (symbol)
+                (character)
+                (symbol))))))
+      (expression
+        (infix_operation
+          (expression
+            (apply
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (module_identifier)
+                (symbol)
+                (fn_identifier))
+              (simple_expression
+                (char_literal
+                  (symbol)
+                  (character)
+                  (symbol)))))
+          (operator)
+          (expression
+            (simple_expression
+              (bool_literal)))))
+      (expression
+        (infix_operation
+          (expression
+            (apply
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (module_identifier)
+                (symbol)
+                (fn_identifier))
+              (simple_expression
+                (char_literal
+                  (symbol)
+                  (character)
+                  (symbol)))))
+          (operator)
+          (expression
+            (simple_expression
+              (bool_literal)))))
+      (expression
+        (infix_operation
+          (expression
+            (apply
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (module_identifier)
+                (symbol)
+                (fn_identifier))
+              (simple_expression
+                (char_literal
+                  (symbol)
+                  (character)
+                  (symbol)))))
+          (operator)
+          (expression
+            (simple_expression
+              (bool_literal))))))

@@ -143,3 +143,218 @@ Dict { ``Content-Length`` = 1L }
     )
   )
 )
+
+
+==================
+test
+==================
+
+Dict
+  { key1 = ("val11", "val12")
+    key2 = ("val21", "val22") }
+
+---
+
+(source_file
+  (expression
+    (simple_expression
+      (dict_literal
+        (keyword)
+        (symbol)
+        (dict_content
+          (dict_pair
+            (variable_identifier)
+            (symbol)
+            (expression
+              (simple_expression
+                (tuple_literal
+                  (symbol)
+                  (expression (simple_expression (string_segment (string_literal (symbol) (string_content) (symbol)))))
+                  (symbol)
+                  (expression (simple_expression (string_segment (string_literal (symbol) (string_content) (symbol)))))
+                  (symbol)
+                )
+              )
+            )
+          )
+          (newline)
+          (dict_pair
+            (variable_identifier)
+            (symbol)
+            (expression
+              (simple_expression
+                (tuple_literal
+                  (symbol)
+                  (expression (simple_expression (string_segment (string_literal (symbol) (string_content) (symbol)))))
+                  (symbol)
+                  (expression (simple_expression (string_segment  (string_literal (symbol)  (string_content) (symbol)))))
+                  (symbol)
+                )
+              )
+            )
+          )
+        )
+        (symbol)
+      )
+    )
+  )
+)
+
+
+==================
+test 2
+==================
+
+Stdlib.Dict.map
+  (Dict
+    { key1 = ("val11", "val12")
+      key2 = ("val21", "val22") })
+  (fun x (y, z) -> x ++ y ++ z)
+==
+(Dict
+  { key2 = "key2val21val22"
+    key1 = "key1val11val12" })
+
+---
+
+(source_file
+  (expression
+    (infix_operation
+      (expression
+        (apply
+          (qualified_fn_name
+            (module_identifier)
+            (symbol)
+            (module_identifier)
+            (symbol)
+            (fn_identifier))
+          (indent)
+          (expression
+            (paren_expression
+              (symbol)
+              (expression
+                (simple_expression
+                  (dict_literal
+                    (keyword)
+                    (symbol)
+                    (dict_content
+                      (dict_pair
+                        (variable_identifier)
+                        (symbol)
+                        (expression
+                          (simple_expression
+                            (tuple_literal
+                              (symbol)
+                              (expression
+                                (simple_expression
+                                  (string_segment
+                                    (string_literal
+                                      (symbol)
+                                      (string_content)
+                                      (symbol)))))
+                              (symbol)
+                              (expression
+                                (simple_expression
+                                  (string_segment
+                                    (string_literal
+                                      (symbol)
+                                      (string_content)
+                                      (symbol)))))
+                              (symbol)))))
+                      (newline)
+                      (dict_pair
+                        (variable_identifier)
+                        (symbol)
+                        (expression
+                          (simple_expression
+                            (tuple_literal
+                              (symbol)
+                              (expression
+                                (simple_expression
+                                  (string_segment
+                                    (string_literal
+                                      (symbol)
+                                      (string_content)
+                                      (symbol)))))
+                              (symbol)
+                              (expression
+                                (simple_expression
+                                  (string_segment
+                                    (string_literal
+                                      (symbol)
+                                      (string_content)
+                                      (symbol)))))
+                              (symbol))))))
+                    (symbol))))
+              (symbol)))
+          (expression
+            (paren_expression
+              (symbol)
+              (expression
+                (lambda_expression
+                  (keyword)
+                  (lambda_pats
+                    (let_pattern
+                      (variable_identifier))
+                    (let_pattern
+                      (lp_tuple
+                        (symbol)
+                        (let_pattern
+                          (variable_identifier))
+                        (symbol)
+                        (let_pattern
+                          (variable_identifier))
+                        (symbol))))
+                  (symbol)
+                  (expression
+                    (infix_operation
+                      (expression
+                        (infix_operation
+                          (expression
+                            (simple_expression
+                              (variable_identifier)))
+                          (operator)
+                          (expression
+                            (simple_expression
+                              (variable_identifier)))))
+                      (operator)
+                      (expression
+                        (simple_expression
+                          (variable_identifier)))))))
+              (symbol)))
+          (dedent)))
+      (operator)
+      (expression
+        (paren_expression
+          (symbol)
+          (expression
+            (simple_expression
+              (dict_literal
+                (keyword)
+                (symbol)
+                (dict_content
+                  (dict_pair
+                    (variable_identifier)
+                    (symbol)
+                    (expression
+                      (simple_expression
+                        (string_segment
+                          (string_literal
+                            (symbol)
+                            (string_content)
+                            (symbol))))))
+                  (newline)
+                  (dict_pair
+                    (variable_identifier)
+                    (symbol)
+                    (expression
+                      (simple_expression
+                        (string_segment
+                          (string_literal
+                            (symbol)
+                            (string_content)
+                            (symbol)))))))
+                (symbol))))
+          (symbol))))))
+
+

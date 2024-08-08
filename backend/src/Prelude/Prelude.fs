@@ -290,12 +290,14 @@ let readFloat (f : float) : (Sign * string * string) =
 let makeFloat (sign : Sign) (whole : string) (fraction : string) : float =
   try
     if whole <> "" then assert_ "non-zero string" [] (whole[0] <> '-')
-    if whole <> "0" then assertRe $"makefloat" "[1-9][0-9]*" whole
+    if whole <> "0" then assertRe $"makefloat" "0*[0-9]+" whole
     let sign =
       match sign with
       | Positive -> ""
       | Negative -> "-"
-    $"{sign}{whole}.{fraction}" |> System.Double.Parse
+    let s = $"{sign}{whole}.{fraction}"
+    // debuG "makeFloat" s
+    s |> System.Double.Parse
   with e ->
     Exception.raiseInternal
       $"makeFloat failed"

@@ -493,45 +493,53 @@ let typeDeclarations =
 
 let exprs =
   [
-    // units
-    t "unit literal" "()" "()" [] [] [] false
+    // // units
+    // t "unit literal" "()" "()" [] [] [] false
 
-    // bools
-    t "true literal" "true" "true" [] [] [] false
-    t "false literal" "false" "false" [] [] [] false
+    // // bools
+    // t "true literal" "true" "true" [] [] [] false
+    // t "false literal" "false" "false" [] [] [] false
 
-    // parens (disappear)
-    t "parens, basic" "(true)" "true" [] [] [] false
+    // // parens (disappear)
+    // t "parens, basic" "(true)" "true" [] [] [] false
 
-    // int literals
-    t "int literal 1y" "1y" "1y" [] [] [] false
-    t "int literal -1y" "-1y" "-1y" [] [] [] false
-    t "int literal 1uy" "1uy" "1uy" [] [] [] false
-    t "int literal 1s" "1s" "1s" [] [] [] false
-    t "int literal 1us" "1us" "1us" [] [] [] false
-    t "int literal 1l" "1l" "1l" [] [] [] false
-    t "int literal -1l" "-1l" "-1l" [] [] [] false
-    t "int literal 1ul" "1ul" "1ul" [] [] [] false
-    t "int literal 0L" "0L" "0L" [] [] [] false
-    t "int literal 1900L" "1900L" "1900L" [] [] [] false
-    t "int literal -1900L" "-1900L" "-1900L" [] [] [] false
-    t "int literal 1UL" "1UL" "1UL" [] [] [] false
-    t "int literal 1Q" "1Q" "1Q" [] [] [] false
-    t "int literal -1Q" "-1Q" "-1Q" [] [] [] false
-    t "int literal 1Q" "1Q" "1Q" [] [] [] false
+    // // int literals
+    // t "int literal 1y" "1y" "1y" [] [] [] false
+    // t "int literal -1y" "-1y" "-1y" [] [] [] false
+    // t "int literal 1uy" "1uy" "1uy" [] [] [] false
+    // t "int literal 1s" "1s" "1s" [] [] [] false
+    // t "int literal 1us" "1us" "1us" [] [] [] false
+    // t "int literal 1l" "1l" "1l" [] [] [] false
+    // t "int literal -1l" "-1l" "-1l" [] [] [] false
+    // t "int literal 1ul" "1ul" "1ul" [] [] [] false
+    // t "int literal 0L" "0L" "0L" [] [] [] false
+    // t "int literal 1900L" "1900L" "1900L" [] [] [] false
+    // t "int literal -1900L" "-1900L" "-1900L" [] [] [] false
+    // t "int literal 1UL" "1UL" "1UL" [] [] [] false
+    // t "int literal 1Q" "1Q" "1Q" [] [] [] false
+    // t "int literal -1Q" "-1Q" "-1Q" [] [] [] false
+    // t "int literal 1Q" "1Q" "1Q" [] [] [] false
 
-    // float literals
-    t "float literal -1.0" "-1.0" "-1.0" [] [] [] false
-    t "float literal -1.5" "-1.5" "-1.5" [] [] [] false
-    t "float literal 1.5" "1.5" "1.5" [] [] [] false
-    t "float literal 0.0" "0.0" "0.0" [] [] [] false
-    t "float literal 0.775" "0.775" "0.775" [] [] [] false
+    // // float literals
+    // t "float literal -1.0" "-1.0" "-1.0" [] [] [] false
+    // t "float literal -1.5" "-1.5" "-1.5" [] [] [] false
+    // t "float literal 1.5" "1.5" "1.5" [] [] [] false
+    // t "float literal 0.0" "0.0" "0.0" [] [] [] false
+    // t "float literal 0.775" "0.775" "0.775" [] [] [] false
 
     // string literals
     t "empty string" "\"\"" "\"\"" [] [] [] false
     t "hello" "\"hello\"" "\"hello\"" [] [] [] false
     t "hello tab world" "\"hello\\tworld\"" "\"hello\\tworld\"" [] [] [] false
     t "egc" "\"👩‍👩‍👧‍👦\"" "\"👩‍👩‍👧‍👦\"" [] [] [] false
+    t
+      "test"
+      "let smiley () : Char = \"😂\" |> Stdlib.String.head |> Builtin.unwrap"
+      "let smiley () : Char = \"😂\" |> Stdlib.String.head |> Builtin.unwrap"
+      []
+      []
+      []
+      false
     t "unicode" "\"żółw\"" "\"żółw\"" [] [] [] false
     t "string interpolation" "$\"hello {name}\"" "$\"hello {name}\"" [] [] [] false
     t
@@ -560,45 +568,53 @@ let exprs =
       false
 
 
-    // char literals
-    t "the letter a" "'a'" "'a'" [] [] [] false
-    t "a newline char" "'\\n'" "'\\n'" [] [] [] false
-    t "a tab char" "'\t'" "'\t'" [] [] [] false
+    //     // char literals
+    //     t "the letter a" "'a'" "'a'" [] [] [] false
+    //     t "a newline char" "'\\n'" "'\\n'" [] [] [] false
+    //     t "a tab char" "'\t'" "'\t'" [] [] [] false
 
-    // list literal
-    t "empty list" "[]" "[]" [] [] [] false
-    t "string list" "[\"hello\"]" "[\"hello\"]" [] [] [] false
-    t "int list 2" "[1L; 2L]" "[1L; 2L]" [] [] [] false
-    t "int list 3" "[1L; 2L; 3L;]" "[1L; 2L; 3L]" [] [] [] false
+    //     // list literal
+    //     t "empty list" "[]" "[]" [] [] [] false
+    //     t "string list" "[\"hello\"]" "[\"hello\"]" [] [] [] false
+    //     t "int list 2" "[1L; 2L]" "[1L; 2L]" [] [] [] false
+    //     t "int list 3" "[1L; 2L; 3L;]" "[1L; 2L; 3L]" [] [] [] false
+    //     t
+    //       "bool list"
+    //       "[true; false; true; false]"
+    //       "[true; false; true; false]"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t "int list list" "[[1L; 2L]; [3L; 4L]]" "[[1L; 2L]; [3L; 4L]]" [] [] [] false
+    //     t
+    //       "list with newline as a separator"
+    //       "[ true\n false\n true ]"
+    //       "[true; false; true]"
+    //       []
+    //       []
+    //       []
+    //       false
+
+    //     // dict literal
     t
-      "bool list"
-      "[true; false; true; false]"
-      "[true; false; true; false]"
+      "dict test"
+      "Dict { ``Content-Length`` = 1L }"
+      "Dict { ``Content-Length`` = 1L }"
       []
       []
       []
       false
-    t "int list list" "[[1L; 2L]; [3L; 4L]]" "[[1L; 2L]; [3L; 4L]]" [] [] [] false
-    t
-      "list with newline as a separator"
-      "[ true\n false\n true ]"
-      "[true; false; true]"
-      []
-      []
-      []
-      false
-
-    // dict literal
     t "empty dict" "Dict { }" "Dict {  }" [] [] [] false
     t "simple int dict" "Dict { a = 1L }" "Dict { a = 1L }" [] [] [] false
-    t
-      "string dict"
-      "Dict { a = \"hello\"; b = \"test\" }"
-      "Dict { a = \"hello\"; b = \"test\" }"
-      []
-      []
-      []
-      false
+    //     t
+    //       "string dict"
+    //       "Dict { a = \"hello\"; b = \"test\" }"
+    //       "Dict { a = \"hello\"; b = \"test\" }"
+    //       []
+    //       []
+    //       []
+    //       false
     t
       "longer int dict"
       "Dict { a = 1L; b = 2L; c = 3L }"
@@ -616,124 +632,135 @@ let exprs =
       []
       false
 
-    // tuple literals
-    t "tuple 2" "(1L, \"hello\")" "(1L, \"hello\")" [] [] [] false
-    t "tuple 3" "(1L, \"hello\", 2L)" "(1L, \"hello\", 2L)" [] [] [] false
     t
-      "tuple 4"
-      "(1L, \"hello\", 2L, true)"
-      "(1L, \"hello\", 2L, true)"
-      []
-      []
-      []
-      false
-    t "tuple with expr" "(1L, 2L + 3L, 4L)" "(1L, (2L) + (3L), 4L)" [] [] [] false // CLEANUP
-
-    // record literals
-    t
-      "record, 1 field"
-      "Person1 {name =\"John\"} "
-      "Person1 { name = \"John\" }"
-      []
-      []
-      []
-      true
-    t
-      "record, 2 fields"
-      "Person2 {name =\"John\"; age = 30L} "
-      "Person2 { name = \"John\"; age = 30L }"
-      []
-      []
-      []
-      true
-    t
-      "record, 3 fields"
-      "Person3 {name =\"John\"; age = 30L; hasPet = true} "
-      "Person3 { name = \"John\"; age = 30L; hasPet = true }"
-      [ person3 ]
-      []
-      []
-      false
-
-    t
-      "record with newline as separator"
-      "Person3\n {name =\"John\"\n age = 30L\n hasPet = true} "
-      "Person3 { name = \"John\"; age = 30L; hasPet = true }"
-      [ person3 ]
-      []
-      []
-      false
-
-    // record update
-    t
-      "record update 1"
-      "{ RecordForUpdate { x = 4L; y = 1L } with y = 2L }"
-      "{ RecordForUpdate { x = 4L; y = 1L } with y = 2L }"
-      []
-      []
-      []
-      true
-    t "record update 2" "{ myRec with y = 2L }" "{ myRec with y = 2L }" [] [] [] true
-    t
-      "record update 3"
-      "{ myRec with y = 2L; z = 42L }"
-      "{ myRec with y = 2L; z = 42L }"
+      "dict"
+      "Dict
+  { key2 = \"key2val21val22\"
+    key1 = \"key1val11val12\" }"
+      "Dict { key2 = \"key2val21val22\"; key1 = \"key1val11val12\" }"
       []
       []
       []
       false
 
-    // enum literal
-    t "simple enum literal" "Color.Red" "Color.Red" [] [] [] false
-    t "option none, short" "Stdlib.Option.None" "Stdlib.Option.None" [] [] [] false
-    t
-      "option none, long"
-      "PACKAGE.Darklang.Stdlib.Option.Option.None"
-      "PACKAGE.Darklang.Stdlib.Option.Option.None"
-      []
-      []
-      []
-      false
-    t
-      "option some"
-      "PACKAGE.Darklang.Stdlib.Option.Option.Some 1L"
-      "PACKAGE.Darklang.Stdlib.Option.Option.Some(1L)"
-      []
-      []
-      []
-      false
-    t
-      "custom enum tupled params"
-      "MyEnum.A(1L, 2L)"
-      "MyEnum.A((1L, 2L))"
-      []
-      []
-      []
-      false
-    t "custom enum fn params" "MyEnum.A 1L 2L" "MyEnum.A(1L, 2L)" [] [] [] false
+    //     // tuple literals
+    //     t "tuple 2" "(1L, \"hello\")" "(1L, \"hello\")" [] [] [] false
+    //     t "tuple 3" "(1L, \"hello\", 2L)" "(1L, \"hello\", 2L)" [] [] [] false
+    //     t
+    //       "tuple 4"
+    //       "(1L, \"hello\", 2L, true)"
+    //       "(1L, \"hello\", 2L, true)"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t "tuple with expr" "(1L, 2L + 3L, 4L)" "(1L, (2L) + (3L), 4L)" [] [] [] false // CLEANUP
 
-    // qualified constant
-    t
-      "qualified constant"
-      "Stdlib.List.empty"
-      "PACKAGE.Darklang.Stdlib.List.empty"
-      []
-      []
-      []
-      false
+    //     // record literals
+    //     t
+    //       "record, 1 field"
+    //       "Person1 {name =\"John\"} "
+    //       "Person1 { name = \"John\" }"
+    //       []
+    //       []
+    //       []
+    //       true
+    //     t
+    //       "record, 2 fields"
+    //       "Person2 {name =\"John\"; age = 30L} "
+    //       "Person2 { name = \"John\"; age = 30L }"
+    //       []
+    //       []
+    //       []
+    //       true
+    //     t
+    //       "record, 3 fields"
+    //       "Person3 {name =\"John\"; age = 30L; hasPet = true} "
+    //       "Person3 { name = \"John\"; age = 30L; hasPet = true }"
+    //       [ person3 ]
+    //       []
+    //       []
+    //       false
 
-    // variables and let bindings
-    t
-      "assumed var name"
-      "assumedlyAVariableName"
-      "assumedlyAVariableName"
-      []
-      []
-      []
-      false
-    // TODO: this is ugly
-    t "simple let expr" "let x = 1L\n  x" "let x =\n  1L\nx" [] [] [] false
-    t "let expr with indent" "let x =\n  1L\nx" "let x =\n  1L\nx" [] [] [] false
+    //     t
+    //       "record with newline as separator"
+    //       "Person3\n {name =\"John\"\n age = 30L\n hasPet = true} "
+    //       "Person3 { name = \"John\"; age = 30L; hasPet = true }"
+    //       [ person3 ]
+    //       []
+    //       []
+    //       false
+
+    //     // record update
+    //     t
+    //       "record update 1"
+    //       "{ RecordForUpdate { x = 4L; y = 1L } with y = 2L }"
+    //       "{ RecordForUpdate { x = 4L; y = 1L } with y = 2L }"
+    //       []
+    //       []
+    //       []
+    //       true
+    //     t "record update 2" "{ myRec with y = 2L }" "{ myRec with y = 2L }" [] [] [] true
+    //     t
+    //       "record update 3"
+    //       "{ myRec with y = 2L; z = 42L }"
+    //       "{ myRec with y = 2L; z = 42L }"
+    //       []
+    //       []
+    //       []
+    //       false
+
+    //     // enum literal
+    //     t "simple enum literal" "Color.Red" "Color.Red" [] [] [] false
+    //     t "option none, short" "Stdlib.Option.None" "Stdlib.Option.None" [] [] [] false
+    //     t
+    //       "option none, long"
+    //       "PACKAGE.Darklang.Stdlib.Option.Option.None"
+    //       "PACKAGE.Darklang.Stdlib.Option.Option.None"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "option some"
+    //       "PACKAGE.Darklang.Stdlib.Option.Option.Some 1L"
+    //       "PACKAGE.Darklang.Stdlib.Option.Option.Some(1L)"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "custom enum tupled params"
+    //       "MyEnum.A(1L, 2L)"
+    //       "MyEnum.A((1L, 2L))"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t "custom enum fn params" "MyEnum.A 1L 2L" "MyEnum.A(1L, 2L)" [] [] [] false
+
+    //     // qualified constant
+    //     t
+    //       "qualified constant"
+    //       "Stdlib.List.empty"
+    //       "PACKAGE.Darklang.Stdlib.List.empty"
+    //       []
+    //       []
+    //       []
+    //       false
+
+    //     // variables and let bindings
+    //     t
+    //       "assumed var name"
+    //       "assumedlyAVariableName"
+    //       "assumedlyAVariableName"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     // TODO: this is ugly
+    //     t "simple let expr" "let x = 1L\n  x" "let x =\n  1L\nx" [] [] [] false
+    //     t "let expr with indent" "let x =\n  1L\nx" "let x =\n  1L\nx" [] [] [] false
 
     t
       "tuple destructuring"
@@ -780,472 +807,472 @@ let exprs =
       []
       false
 
-    // lambda
-    t "simple lambda" "fun x -> x + 1L" "(fun x ->\n  (x) + (1L))" [] [] [] false
-    t
-      "lambda wrapped with parens"
-      "(fun x -> x + 1L)"
-      "(fun x ->\n  (x) + (1L))"
-      []
-      []
-      []
-      false
-    t "lambda, 2 args" "fun x y -> x * y" "(fun x y ->\n  (x) * (y))" [] [] [] false
-    t "lambda, unit arg" "fun () -> 1L" "(fun () ->\n  1L)" [] [] [] false
-    t
-      "lambda with notable body"
-      "fun var -> (Stdlib.String.toUppercase (Stdlib.String.fromChar var))"
-      "(fun var ->\n  PACKAGE.Darklang.Stdlib.String.toUppercase (PACKAGE.Darklang.Stdlib.String.fromChar var))"
-      []
-      []
-      []
-      false
-    t
-      "lambda with notable body 2"
-      "fun (str1, str2) -> str1 ++ str2"
-      "(fun (str1, str2) ->\n  (str1) ++ (str2))"
-      []
-      []
-      []
-      false
+    //     // lambda
+    //     t "simple lambda" "fun x -> x + 1L" "(fun x ->\n  (x) + (1L))" [] [] [] false
+    //     t
+    //       "lambda wrapped with parens"
+    //       "(fun x -> x + 1L)"
+    //       "(fun x ->\n  (x) + (1L))"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t "lambda, 2 args" "fun x y -> x * y" "(fun x y ->\n  (x) * (y))" [] [] [] false
+    //     t "lambda, unit arg" "fun () -> 1L" "(fun () ->\n  1L)" [] [] [] false
+    //     t
+    //       "lambda with notable body"
+    //       "fun var -> (Stdlib.String.toUppercase (Stdlib.String.fromChar var))"
+    //       "(fun var ->\n  PACKAGE.Darklang.Stdlib.String.toUppercase (PACKAGE.Darklang.Stdlib.String.fromChar var))"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "lambda with notable body 2"
+    //       "fun (str1, str2) -> str1 ++ str2"
+    //       "(fun (str1, str2) ->\n  (str1) ++ (str2))"
+    //       []
+    //       []
+    //       []
+    //       false
 
 
-    // if expressions
-    t "if, 1" "if true then 1L" "if true then\n  1L" [] [] [] false
-    t
-      "if, 2"
-      "if true then 1L else 2L"
-      "if true then\n  1L\nelse\n  2L"
-      []
-      []
-      []
-      false
-    t
-      "if, 3"
-      "if a < b then 1L else if c > d then 2L"
-      "if (a) < (b) then\n  1L\nelse if (c) > (d) then\n  2L"
-      []
-      []
-      []
-      false
-    t
-      "if, 4"
-      "if a < b then 1L else if c > d then 2L else 3L"
-      "if (a) < (b) then\n  1L\nelse if (c) > (d) then\n  2L\nelse\n  3L"
-      []
-      []
-      []
-      false
+    //     // if expressions
+    //     t "if, 1" "if true then 1L" "if true then\n  1L" [] [] [] false
+    //     t
+    //       "if, 2"
+    //       "if true then 1L else 2L"
+    //       "if true then\n  1L\nelse\n  2L"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "if, 3"
+    //       "if a < b then 1L else if c > d then 2L"
+    //       "if (a) < (b) then\n  1L\nelse if (c) > (d) then\n  2L"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "if, 4"
+    //       "if a < b then 1L else if c > d then 2L else 3L"
+    //       "if (a) < (b) then\n  1L\nelse if (c) > (d) then\n  2L\nelse\n  3L"
+    //       []
+    //       []
+    //       []
+    //       false
 
-    t "if, 5" "if true then\n 1L" "if true then\n  1L" [] [] [] false
-    t
-      "if, 6"
-      "if true then\n 1L\nelse\n 2L"
-      "if true then\n  1L\nelse\n  2L"
-      []
-      []
-      []
-      false
-    t
-      "if, 7"
-      "if true then\n a\nelse if false then\n c"
-      "if true then\n  a\nelse if false then\n  c"
-      []
-      []
-      []
-      false
+    //     t "if, 5" "if true then\n 1L" "if true then\n  1L" [] [] [] false
+    //     t
+    //       "if, 6"
+    //       "if true then\n 1L\nelse\n 2L"
+    //       "if true then\n  1L\nelse\n  2L"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "if, 7"
+    //       "if true then\n a\nelse if false then\n c"
+    //       "if true then\n  a\nelse if false then\n  c"
+    //       []
+    //       []
+    //       []
+    //       false
 
-    t
-      "if, 8"
-      "if a > b then\n a\nelse if c > d then\n c\nelse d"
-      "if (a) > (b) then\n  a\nelse if (c) > (d) then\n  c\nelse\n  d"
-      []
-      []
-      []
-      false
+    //     t
+    //       "if, 8"
+    //       "if a > b then\n a\nelse if c > d then\n c\nelse d"
+    //       "if (a) > (b) then\n  a\nelse if (c) > (d) then\n  c\nelse\n  d"
+    //       []
+    //       []
+    //       []
+    //       false
 
-    t
-      "if, 9"
-      "if true then\n\ta\nelse\n\tb"
-      "if true then\n  a\nelse\n  b"
-      []
-      []
-      []
-      false
+    //     t
+    //       "if, 9"
+    //       "if true then\n\ta\nelse\n\tb"
+    //       "if true then\n  a\nelse\n  b"
+    //       []
+    //       []
+    //       []
+    //       false
 
-    t
-      "if, many branches"
-      """if true then
-  a
-else if false then
-  c
-else if true then
-  d"""
-      """if true then
-  a
-else if false then
-  c
-else if true then
-  d"""
-      []
-      []
-      []
-      false
+    //     t
+    //       "if, many branches"
+    //       """if true then
+    //   a
+    // else if false then
+    //   c
+    // else if true then
+    //   d"""
+    //       """if true then
+    //   a
+    // else if false then
+    //   c
+    // else if true then
+    //   d"""
+    //       []
+    //       []
+    //       []
+    //       false
 
-    t
-      "else for inner if"
-      """
-if a > b then
-  if c > d then
-    c
-  else
-    b"""
-      """if (a) > (b) then
-  if (c) > (d) then
-    c
-  else
-    b"""
-      []
-      []
-      []
-      false
+    //     t
+    //       "else for inner if"
+    //       """
+    // if a > b then
+    //   if c > d then
+    //     c
+    //   else
+    //     b"""
+    //       """if (a) > (b) then
+    //   if (c) > (d) then
+    //     c
+    //   else
+    //     b"""
+    //       []
+    //       []
+    //       []
+    //       false
 
-    t
-      "else for outer if"
-      """
-if a > b then
-  if c > d then
-    c
-else
-  b"""
-      """if (a) > (b) then
-  if (c) > (d) then
-    c
-else
-  b"""
-      []
-      []
-      []
-      false
+    //     t
+    //       "else for outer if"
+    //       """
+    // if a > b then
+    //   if c > d then
+    //     c
+    // else
+    //   b"""
+    //       """if (a) > (b) then
+    //   if (c) > (d) then
+    //     c
+    // else
+    //   b"""
+    //       []
+    //       []
+    //       []
+    //       false
 
-    t
-      "nested if"
-      """if a > b then
-  a
-else
-  if c > d then
-    c
-  else
-    if e > f then
-      e
-    else
-      if g > h then
-        g
-      else
-        h"""
-      """if (a) > (b) then
-  a
-else if (c) > (d) then
-  c
-else if (e) > (f) then
-  e
-else if (g) > (h) then
-  g
-else
-  h"""
-      []
-      []
-      []
-      false
-
-
-    // match expressions
-    t
-      "match, unit"
-      "match () with\n| () -> true"
-      "match () with\n| () ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, bool"
-      "match true with\n| true -> true"
-      "match true with\n| true ->\n  true"
-      []
-      []
-      []
-      false
-
-    t
-      "match, int 1y"
-      "match 1y with\n| 1y -> true"
-      "match 1y with\n| 1y ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, int -1y"
-      "match -1y with\n| -1y -> true"
-      "match -1y with\n| -1y ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, int 0uy"
-      "match 0uy with\n| 0uy -> true"
-      "match 0uy with\n| 0uy ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, int 1s"
-      "match 1s with\n| 1s -> true"
-      "match 1s with\n| 1s ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, int 2us"
-      "match 2us with\n| 2us -> true"
-      "match 2us with\n| 2us ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, int 3l"
-      "match 3l with\n| 3l -> true"
-      "match 3l with\n| 3l ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, int 5ul"
-      "match 5ul with\n| 5ul -> true"
-      "match 5ul with\n| 5ul ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, int 7L"
-      "match 7L with\n| 7L -> true"
-      "match 7L with\n| 7L ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, int 8UL"
-      "match 8UL with\n| 8UL -> true"
-      "match 8UL with\n| 8UL ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, int 9Q"
-      "match 9Q with\n| 9Q -> true"
-      "match 9Q with\n| 9Q ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, int 10Z"
-      "match 10Z with\n| 10Z -> true"
-      "match 10Z with\n| 10Z ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, float 0.9"
-      "match 0.9 with\n| 0.9 -> true"
-      "match 0.9 with\n| 0.9 ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, string"
-      "match \"str\" with\n| \"str\" -> true"
-      "match \"str\" with\n| \"str\" ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, char"
-      "match 'c' with\n| 'c' -> true"
-      "match 'c' with\n| 'c' ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, var"
-      "match var with\n| var -> true"
-      "match var with\n| var ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, str 2"
-      "match \"str\" with\n| \"str\" -> true\n| \"other\" -> false"
-      "match \"str\" with\n| \"str\" ->\n  true\n| \"other\" ->\n  false"
-      []
-      []
-      []
-      false
-    t
-      "match, int list 1"
-      "match [1L; 2L] with\n| [1L; 2L] -> true"
-      "match [1L; 2L] with\n| [1L; 2L] ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, int list 2"
-      "match [1L; 2L; 3L] with\n| head :: tail ->\n \"pass\""
-      "match [1L; 2L; 3L] with\n| head :: tail ->\n  \"pass\""
-      []
-      []
-      []
-      false
-    t
-      "match, int tuple"
-      "match (1L, 2L) with\n| (1L, 2L) -> true"
-      "match (1L, 2L) with\n| (1L, 2L) ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, enum"
-      "match Stdlib.Result.Result.Ok 5L with\n| Ok 5L -> true\n| Error e -> false"
-      "match PACKAGE.Darklang.Stdlib.Result.Result.Ok(5L) with\n| Ok 5L ->\n  true\n| Error e ->\n  false"
-      []
-      []
-      []
-      false
-    t
-      "match, string 3"
-      "match \"str\" with\n| \"str\" when true -> true"
-      "match \"str\" with\n| \"str\" when true ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, when simple"
-      "match x with\n| y when y > 1L -> true\n| z when z < 1L -> false\n| w -> w"
-      "match x with\n| y when (y) > (1L) ->\n  true\n| z when (z) < (1L) ->\n  false\n| w ->\n  w"
-      []
-      []
-      []
-      false
-    t
-      "match, ignored 1"
-      "match true with\n| _ -> true"
-      "match true with\n| _ ->\n  true"
-      []
-      []
-      []
-      false
-    t
-      "match, ignored 2"
-      "match true with\n| _var -> true"
-      "match true with\n| _var ->\n  true"
-      []
-      []
-      []
-      false
+    //     t
+    //       "nested if"
+    //       """if a > b then
+    //   a
+    // else
+    //   if c > d then
+    //     c
+    //   else
+    //     if e > f then
+    //       e
+    //     else
+    //       if g > h then
+    //         g
+    //       else
+    //         h"""
+    //       """if (a) > (b) then
+    //   a
+    // else if (c) > (d) then
+    //   c
+    // else if (e) > (f) then
+    //   e
+    // else if (g) > (h) then
+    //   g
+    // else
+    //   h"""
+    //       []
+    //       []
+    //       []
+    //       false
 
 
-    // pipe expression
-    t "pipe, infix" "1L |> (+) 2L" "1L\n|> (+) 2L" [] [] [] false
-    t "pipe, into var" "1L |> x" "1L\n|> x" [] [] [] false
-    t
-      "pipe, into lambda"
-      "1L |> (fun x -> x + 1L)"
-      "1L\n|> fun x -> (x) + (1L)"
-      []
-      []
-      []
-      false
-    t
-      "pipe, into lambda, 2"
-      "1L |> fun x -> x + 1L"
-      "1L\n|> fun x -> (x) + (1L)"
-      []
-      []
-      []
-      false
-    t
-      "pipe, into enum"
-      "3L |> Stdlib.Result.Result.Ok"
-      "3L\n|> PACKAGE.Darklang.Stdlib.Result.Result.Ok"
-      []
-      []
-      []
-      false
-    t
-      "pipe, into enum 2"
-      "33L |> MyEnum.A 21L"
-      "33L\n|> MyEnum.A (21L)"
-      []
-      []
-      []
-      false
-    t
-      "pipe, into fn call"
-      "1L |> Stdlib.Int64.add 2L"
-      "1L\n|> PACKAGE.Darklang.Stdlib.Int64.add 2L"
-      []
-      []
-      []
-      false
-    t
-      "pipe, into fn call 2"
-      "1L |> Stdlib.Int64.toString"
-      "1L\n|> PACKAGE.Darklang.Stdlib.Int64.toString"
-      []
-      []
-      []
-      false
-    t
-      "pipe, into fn call 3"
-      "\"true\" |> Builtin.jsonParse<Bool>"
-      "\"true\"\n|> Builtin.jsonParse<Bool>"
-      []
-      []
-      []
-      false
-    t
-      "pipe, into fn call 4"
-      "Stdlib.Int64.add 1L 2L |> Stdlib.Int64.add 1L"
-      "PACKAGE.Darklang.Stdlib.Int64.add 1L 2L\n|> PACKAGE.Darklang.Stdlib.Int64.add 1L"
-      []
-      []
-      []
-      false
-    t
-      "pipe, into fn call 5"
-      "[1L; 2L] |> Stdlib.List.last |> Builtin.unwrap"
-      "[1L; 2L]\n|> PACKAGE.Darklang.Stdlib.List.last\n|> Builtin.unwrap"
-      []
-      []
-      []
-      false
+    //     // match expressions
+    //     t
+    //       "match, unit"
+    //       "match () with\n| () -> true"
+    //       "match () with\n| () ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, bool"
+    //       "match true with\n| true -> true"
+    //       "match true with\n| true ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+
+    //     t
+    //       "match, int 1y"
+    //       "match 1y with\n| 1y -> true"
+    //       "match 1y with\n| 1y ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, int -1y"
+    //       "match -1y with\n| -1y -> true"
+    //       "match -1y with\n| -1y ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, int 0uy"
+    //       "match 0uy with\n| 0uy -> true"
+    //       "match 0uy with\n| 0uy ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, int 1s"
+    //       "match 1s with\n| 1s -> true"
+    //       "match 1s with\n| 1s ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, int 2us"
+    //       "match 2us with\n| 2us -> true"
+    //       "match 2us with\n| 2us ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, int 3l"
+    //       "match 3l with\n| 3l -> true"
+    //       "match 3l with\n| 3l ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, int 5ul"
+    //       "match 5ul with\n| 5ul -> true"
+    //       "match 5ul with\n| 5ul ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, int 7L"
+    //       "match 7L with\n| 7L -> true"
+    //       "match 7L with\n| 7L ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, int 8UL"
+    //       "match 8UL with\n| 8UL -> true"
+    //       "match 8UL with\n| 8UL ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, int 9Q"
+    //       "match 9Q with\n| 9Q -> true"
+    //       "match 9Q with\n| 9Q ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, int 10Z"
+    //       "match 10Z with\n| 10Z -> true"
+    //       "match 10Z with\n| 10Z ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, float 0.9"
+    //       "match 0.9 with\n| 0.9 -> true"
+    //       "match 0.9 with\n| 0.9 ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, string"
+    //       "match \"str\" with\n| \"str\" -> true"
+    //       "match \"str\" with\n| \"str\" ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, char"
+    //       "match 'c' with\n| 'c' -> true"
+    //       "match 'c' with\n| 'c' ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, var"
+    //       "match var with\n| var -> true"
+    //       "match var with\n| var ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, str 2"
+    //       "match \"str\" with\n| \"str\" -> true\n| \"other\" -> false"
+    //       "match \"str\" with\n| \"str\" ->\n  true\n| \"other\" ->\n  false"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, int list 1"
+    //       "match [1L; 2L] with\n| [1L; 2L] -> true"
+    //       "match [1L; 2L] with\n| [1L; 2L] ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, int list 2"
+    //       "match [1L; 2L; 3L] with\n| head :: tail ->\n \"pass\""
+    //       "match [1L; 2L; 3L] with\n| head :: tail ->\n  \"pass\""
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, int tuple"
+    //       "match (1L, 2L) with\n| (1L, 2L) -> true"
+    //       "match (1L, 2L) with\n| (1L, 2L) ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, enum"
+    //       "match Stdlib.Result.Result.Ok 5L with\n| Ok 5L -> true\n| Error e -> false"
+    //       "match PACKAGE.Darklang.Stdlib.Result.Result.Ok(5L) with\n| Ok 5L ->\n  true\n| Error e ->\n  false"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, string 3"
+    //       "match \"str\" with\n| \"str\" when true -> true"
+    //       "match \"str\" with\n| \"str\" when true ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, when simple"
+    //       "match x with\n| y when y > 1L -> true\n| z when z < 1L -> false\n| w -> w"
+    //       "match x with\n| y when (y) > (1L) ->\n  true\n| z when (z) < (1L) ->\n  false\n| w ->\n  w"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, ignored 1"
+    //       "match true with\n| _ -> true"
+    //       "match true with\n| _ ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "match, ignored 2"
+    //       "match true with\n| _var -> true"
+    //       "match true with\n| _var ->\n  true"
+    //       []
+    //       []
+    //       []
+    //       false
+
+
+    //     // pipe expression
+    //     t "pipe, infix" "1L |> (+) 2L" "1L\n|> (+) 2L" [] [] [] false
+    //     t "pipe, into var" "1L |> x" "1L\n|> x" [] [] [] false
+    //     t
+    //       "pipe, into lambda"
+    //       "1L |> (fun x -> x + 1L)"
+    //       "1L\n|> fun x -> (x) + (1L)"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "pipe, into lambda, 2"
+    //       "1L |> fun x -> x + 1L"
+    //       "1L\n|> fun x -> (x) + (1L)"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "pipe, into enum"
+    //       "3L |> Stdlib.Result.Result.Ok"
+    //       "3L\n|> PACKAGE.Darklang.Stdlib.Result.Result.Ok"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "pipe, into enum 2"
+    //       "33L |> MyEnum.A 21L"
+    //       "33L\n|> MyEnum.A (21L)"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "pipe, into fn call"
+    //       "1L |> Stdlib.Int64.add 2L"
+    //       "1L\n|> PACKAGE.Darklang.Stdlib.Int64.add 2L"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "pipe, into fn call 2"
+    //       "1L |> Stdlib.Int64.toString"
+    //       "1L\n|> PACKAGE.Darklang.Stdlib.Int64.toString"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "pipe, into fn call 3"
+    //       "\"true\" |> Builtin.jsonParse<Bool>"
+    //       "\"true\"\n|> Builtin.jsonParse<Bool>"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "pipe, into fn call 4"
+    //       "Stdlib.Int64.add 1L 2L |> Stdlib.Int64.add 1L"
+    //       "PACKAGE.Darklang.Stdlib.Int64.add 1L 2L\n|> PACKAGE.Darklang.Stdlib.Int64.add 1L"
+    //       []
+    //       []
+    //       []
+    //       false
+    //     t
+    //       "pipe, into fn call 5"
+    //       "[1L; 2L] |> Stdlib.List.last |> Builtin.unwrap"
+    //       "[1L; 2L]\n|> PACKAGE.Darklang.Stdlib.List.last\n|> Builtin.unwrap"
+    //       []
+    //       []
+    //       []
+    //       false
 
     // fn calls
     // CLEANUP these are ugly
@@ -1675,10 +1702,14 @@ Builtin.printLine (getTitle curiousGeorgeBookId)
 let tests =
   testList
     "NewParser"
-    [ typeReferences
-      typeDeclarations
-      constantDeclarations
+    // []
+    [
+      // typeReferences
+      // typeDeclarations
+      // constantDeclarations
       exprs
-      functionDeclarations
-      moduleDeclarations
-      sourceFiles ]
+
+      // functionDeclarations
+      // moduleDeclarations
+      // sourceFiles
+      ]

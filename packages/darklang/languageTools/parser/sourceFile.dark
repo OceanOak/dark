@@ -77,6 +77,8 @@ module Darklang =
       let parseFromTree
         (node: ParsedNode)
         : Stdlib.Result.Result<WrittenTypes.ParsedFile, String> =
+        // Builtin.debug "Parsing source file" node
+
         if node.typ == "source_file" then
           let init =
             WrittenTypes.SourceFile.SourceFile

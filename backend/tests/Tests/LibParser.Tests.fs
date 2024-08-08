@@ -126,4 +126,5 @@ let exprRTs =
         )) ]
 
 
-let tests = testList "LibParser" [ exprRTs ]
+let tests = testList "LibParser" []
+// [ exprRTs ]

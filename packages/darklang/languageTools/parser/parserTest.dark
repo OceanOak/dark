@@ -4,6 +4,10 @@ module Darklang =
       // CLEANUP: maybe rename this to just Test?
       module ParserTest =
         let initialParse (code: String) : WrittenTypes.ParsedFile =
+          // Builtin.debug
+          //   "Parsing....."
+          //   (code |> LanguageTools.Parser.parseToSimplifiedTree)
+
           code
           |> LanguageTools.Parser.parseToSimplifiedTree
           |> LanguageTools.Parser.parseFromTree

@@ -1,0 +1,19 @@
+module Nested =
+  module Nested1 =
+    module Nested2 =
+      let c (arg: String) : Char =
+        (Builtin.testToChar arg) |> Builtin.unwrap
+
+      Stdlib.String.fromChar (c "1") == "1"
+      Stdlib.String.fromChar 'a' == "a"
+
+module Test =
+  module Test1 =
+    let d (arg: String) : Char =
+      (Builtin.testToChar arg) |> Builtin.unwrap
+
+    Stdlib.String.fromChar (Test.Test1.d "1") == "1"
+    Stdlib.String.fromChar 'a' == "a"
+
+Stdlib.String.fromChar (Test.Test1.d "1") == "1"
+Stdlib.String.fromChar (Nested.Nested1.Nested2.c "1") == "1"

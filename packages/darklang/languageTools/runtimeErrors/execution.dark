@@ -47,7 +47,7 @@ module Darklang =
           | MatchExprUnmatched dv ->
             let summary =
               [ ErrorSegment.ErrorSegment.String "No match for "
-                ErrorSegment.ErrorSegment.InlineValue dv ]
+                ErrorSegment.ErrorSegment.FullValue dv ]
 
             // TODO include patterns in error message
             let extraExplanation = []
@@ -92,7 +92,7 @@ module Darklang =
               [ ErrorSegment.ErrorSegment.String "Cannot match "
                 ErrorSegment.ErrorSegment.TypeOfValue dv
                 ErrorSegment.ErrorSegment.String " value "
-                ErrorSegment.ErrorSegment.InlineValue dv
+                ErrorSegment.ErrorSegment.FullValue dv
                 ErrorSegment.ErrorSegment.String " with "
                 ErrorSegment.ErrorSegment.IndefiniteArticle
                 ErrorSegment.ErrorSegment.String patternType

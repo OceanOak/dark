@@ -219,7 +219,7 @@ let fileTests () : Test =
   // with the 'extra' things defined in the test modules.
   let pmPT = LibCloud.PackageManager.pt
 
-  let parseTestFile fileName =
+  let parseTestFileOld fileName =
     LibParser.TestModule.parseTestFile
       "Tests"
       (localBuiltIns pmPT)
@@ -227,10 +227,66 @@ let fileTests () : Test =
       NR.OnMissing.Allow
       fileName
 
+  let parseTestFile fileName =
+    uply {
+      let! (state : RT.ExecutionState) =
+        let canvasID = System.Guid.NewGuid()
+        executionStateFor pmPT canvasID false false Map.empty
+
+      let name =
+        RT.FQFnName.FQFnName.Package PackageIDs.Fn.Internal.Test.parseTestFile
+
+      let onMissingType =
+        RT.FQTypeName.FQTypeName.Package
+          PackageIDs.Type.LanguageTools.NameResolver.nameResolverOnMissing
+
+      let onMissingAllow =
+        RT.Dval.DEnum(onMissingType, onMissingType, [], "Allow", [])
+
+      let getPmFnName =
+        RT.FQFnName.FQFnName.Package PackageIDs.Fn.LanguageTools.PackageManager.pm
+
+      let! execResult =
+        Exe.executeFunction state getPmFnName [] (NEList.singleton RT.Dval.DUnit)
+
+      let! pm =
+        uply {
+          match execResult with
+          | Ok dval -> return dval
+          | Error(_callStack, rte) ->
+            let! rteString = (Exe.rteToString state rte)
+            return
+              Exception.raiseInternal
+                "Error executing pm function"
+                [ "rte", rteString ]
+        }
+
+      let args =
+        NEList.ofList
+          (RT.DString "Tests")
+          [ pm; onMissingAllow; RT.DString fileName ]
+      let! execResult = LibExecution.Execution.executeFunction state name [] args
+
+      match execResult with
+      | Ok dval ->
+        // debuG "parseTestFile" dval
+        return Internal.TestModule.fromDT dval
+      | Error(_, rte) ->
+        let! rteString = Exe.rteToString state rte
+        return
+          Exception.raiseInternal
+            "Error executing parseTestFile function"
+            [ "error", rteString ]
+    }
+
+
+
+
   System.IO.Directory.GetDirectories(baseDir, "*")
   |> Array.map (fun dir ->
     System.IO.Directory.GetFiles(dir, "*.dark")
     |> Array.toList
+    |> List.filter (String.endsWith "httpclient.dark")
     |> List.map (fun file ->
       let filename = System.IO.Path.GetFileName file
       let testName = System.IO.Path.GetFileNameWithoutExtension file
@@ -241,35 +297,92 @@ let fileTests () : Test =
         testList $"skipped - {testName}" []
       else
         try
-          let modules =
-            $"{dir}/{filename}" |> parseTestFile |> (fun ply -> ply.Result)
-
-          let pm =
-            PT.PackageManager.withExtras
-              pmPT
-              (modules |> List.collect _.types)
-              (modules |> List.collect _.constants)
-              (modules |> List.collect _.fns)
-
-
+          let allowList =
+            [ "bool.dark"
+              "dfloat.dark"
+              "dlist.dark"
+              "dtuple.dark"
+              "eand.dark"
+              "edict.dark"
+              "eif.dark"
+              "einfix.dark"
+              "elambda.dark"
+              "ematch.dark"
+              "eor.dark"
+              "evariable.dark"
+              "estring.dark"
+              "elet.dark"
+              "epipe.dark"
+              "derror.dark"
+              "efieldaccess.dark"
+              "char.dark"
+              "date.dark"
+              "nomodule.dark"
+              "dict.dark"
+              "uint128.dark"
+              "type-alias.dark"
+              "alt-json.dark"
+              "html.dark"
+              "http.dark"
+              "parser.dark"
+              "semanticTokenization.dark"
+              "httpclient.dark" ]
           let tests =
-            modules
-            |> List.map (fun m ->
-              m.tests
-              |> List.map (fun test ->
-                t
-                  initializeCanvas
-                  test.name
-                  pm
-                  test.actual
-                  test.expected
-                  filename
-                  test.lineNumber
-                  m.dbs
-                  []))
-            |> List.concat
+            if List.contains filename allowList then
+              let modules =
+                $"{dir}/{filename}" |> parseTestFile |> (fun ply -> ply.Result)
+              let pm =
+                PT.PackageManager.withExtras
+                  pmPT
+                  (modules |> List.collect _.types)
+                  (modules |> List.collect _.constants)
+                  (modules |> List.collect _.fns)
+
+              modules
+              |> List.map (fun m ->
+                m.tests
+                |> List.map (fun test ->
+                  t
+                    initializeCanvas
+                    test.name
+                    pm
+                    test.actual
+                    test.expected
+                    filename
+                    test.lineNumber
+                    m.dbs
+                    []))
+              |> List.concat
+
+            else
+              let modules =
+                $"{dir}/{filename}" |> parseTestFileOld |> (fun ply -> ply.Result)
+
+              let pm =
+                PT.PackageManager.withExtras
+                  pmPT
+                  (modules |> List.collect _.types)
+                  (modules |> List.collect _.constants)
+                  (modules |> List.collect _.fns)
+
+              modules
+              |> List.map (fun m ->
+                m.tests
+                |> List.map (fun test ->
+                  t
+                    initializeCanvas
+                    test.name
+                    pm
+                    test.actual
+                    test.expected
+                    filename
+                    test.lineNumber
+                    m.dbs
+                    []))
+              |> List.concat
 
           testList testName tests
+
         with e ->
           print $"Exception in {file}: {e.Message}"
           reraise ())

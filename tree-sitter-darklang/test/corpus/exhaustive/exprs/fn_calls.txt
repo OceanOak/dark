@@ -386,7 +386,6 @@ Builtin.printLine Stdlib.Option.Option.Some 1L
           )
         )
       )
-      (newline)
     )
   )
 )
@@ -559,3 +558,130 @@ Stdlib.Tuple3.mapAllThree
     )
   )
 )
+
+
+==================
+test
+==================
+
+(let y = (fun x ___ -> x + 1L)
+ Stdlib.List.map [ 1L; 2L; 3L; 4L ] y)
+== [ 2L; 3L; 4L; 5L ]
+
+---
+
+(source_file
+  (expression
+    (infix_operation
+      (expression
+        (paren_expression
+          (symbol)
+          (expression
+            (let_expression
+              (keyword)
+              (let_pattern
+                (variable_identifier))
+              (symbol)
+              (expression
+                (paren_expression
+                  (symbol)
+                  (expression
+                    (lambda_expression
+                      (keyword)
+                      (lambda_pats
+                        (let_pattern
+                          (variable_identifier))
+                        (let_pattern
+                          (variable_identifier)))
+                      (symbol)
+                      (expression
+                        (infix_operation
+                          (expression
+                            (simple_expression
+                              (variable_identifier)))
+                          (operator)
+                          (expression
+                            (simple_expression
+                              (int64_literal
+                                (digits
+                                  (positive_digits))
+                                (symbol))))))))
+                  (symbol)))
+              (expression
+                (apply
+                  (qualified_fn_name
+                    (module_identifier)
+                    (symbol)
+                    (module_identifier)
+                    (symbol)
+                    (fn_identifier))
+                  (simple_expression
+                    (list_literal
+                      (symbol)
+                      (list_content
+                        (expression
+                          (simple_expression
+                            (int64_literal
+                              (digits
+                                (positive_digits))
+                              (symbol))))
+                        (symbol)
+                        (expression
+                          (simple_expression
+                            (int64_literal
+                              (digits
+                                (positive_digits))
+                              (symbol))))
+                        (symbol)
+                        (expression
+                          (simple_expression
+                            (int64_literal
+                              (digits
+                                (positive_digits))
+                              (symbol))))
+                        (symbol)
+                        (expression
+                          (simple_expression
+                            (int64_literal
+                              (digits
+                                (positive_digits))
+                              (symbol)))))
+                      (symbol)))
+                  (simple_expression
+                    (variable_identifier))))))
+          (symbol)))
+      (operator)
+      (expression
+        (simple_expression
+          (list_literal
+            (symbol)
+            (list_content
+              (expression
+                (simple_expression
+                  (int64_literal
+                    (digits
+                      (positive_digits))
+                    (symbol))))
+              (symbol)
+              (expression
+                (simple_expression
+                  (int64_literal
+                    (digits
+                      (positive_digits))
+                    (symbol))))
+              (symbol)
+              (expression
+                (simple_expression
+                  (int64_literal
+                    (digits
+                      (positive_digits))
+                    (symbol))))
+              (symbol)
+              (expression
+                (simple_expression
+                  (int64_literal
+                    (digits
+                      (positive_digits))
+                    (symbol)))))
+            (symbol)))))))
+

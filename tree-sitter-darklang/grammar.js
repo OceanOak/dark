@@ -35,9 +35,8 @@ module.exports = grammar({
   rules: {
     source_file: $ =>
       seq(
-        repeat($.module_decl),
-        // all type and fn and constant defs first
-        repeat(choice($.type_decl, $.fn_decl, $.const_decl)),
+        // all module, type, fn and constant defs first
+        repeat(choice($.module_decl, $.type_decl, $.fn_decl, $.const_decl)),
 
         // then the expressions to evaluate, in order
         repeat($.expression),
@@ -318,7 +317,8 @@ module.exports = grammar({
     //
     // match pattern - list cons
     mp_list_cons: $ =>
-      prec.left(
+      prec.right(
+        1,
         seq(
           field("head", $.match_pattern),
           field("symbol_double_colon", alias("::", $.symbol)),
@@ -395,6 +395,7 @@ module.exports = grammar({
         $.field_access,
         $.tuple_literal,
         $.qualified_const_name,
+        // $.qualified_fn_name,
         $.record_update,
       ),
 
@@ -435,10 +436,18 @@ module.exports = grammar({
     // Strings
     // TODO: maybe add support for multiline strings (""")
     string_literal: $ =>
-      seq(
-        field("symbol_open_quote", alias('"', $.symbol)),
-        optional(field("content", $.string_content)),
-        field("symbol_close_quote", alias('"', $.symbol)),
+      choice(
+        seq(
+          field("symbol_open_quote", alias('"', $.symbol)),
+          optional(field("content", $.string_content)),
+          field("symbol_close_quote", alias('"', $.symbol)),
+        ),
+        // multiline strings
+        seq(
+          field("symbol_open_quote", alias('"""', $.symbol)),
+          optional(field("content", $.multiline_string_content)),
+          field("symbol_close_quote", alias('"""', $.symbol)),
+        ),
       ),
 
     string_content: $ =>
@@ -450,15 +459,40 @@ module.exports = grammar({
         ),
       ),
 
+    multiline_string_content: $ =>
+      repeat1(
+        choice(
+          token.immediate(prec(1, /[^\\"]+/)),
+          $.char_or_string_escape_sequence,
+        ),
+      ),
+
     // $"hello {name}
     string_interpolation: $ =>
-      seq(
-        field("symbol_dollar_sign", alias("$", $.symbol)),
-        field("symbol_open_quote", alias('"', $.symbol)),
-        optional(
-          field("string_interpolation_content", $.string_interpolation_content),
+      choice(
+        seq(
+          field("symbol_dollar_sign", alias("$", $.symbol)),
+          field("symbol_open_quote", alias('"', $.symbol)),
+          optional(
+            field(
+              "string_interpolation_content",
+              $.string_interpolation_content,
+            ),
+          ),
+          field("symbol_close_quote", alias('"', $.symbol)),
         ),
-        field("symbol_close_quote", alias('"', $.symbol)),
+        // multiline strings
+        seq(
+          field("symbol_dollar_sign", alias("$", $.symbol)),
+          field("symbol_open_quote", alias('"""', $.symbol)),
+          optional(
+            field(
+              "string_interpolation_content",
+              $.string_interpolation_content,
+            ),
+          ),
+          field("symbol_close_quote", alias('"""', $.symbol)),
+        ),
       ),
 
     string_interpolation_content: $ =>
@@ -658,6 +692,7 @@ module.exports = grammar({
             seq(field("record_separator", alias(";", $.symbol)), $.record_pair),
           ),
         ),
+        // seq($.indent, repeat(seq($.record_pair, $.newline)), $.dedent),
         seq(
           $.record_pair,
           repeat(seq($.newline, $.record_pair)),
@@ -1067,6 +1102,7 @@ module.exports = grammar({
     /** e.g. `x` in `let double (x: Int) = x + x`
      *
      * for let bindings, params, etc. */
+    // variable_identifier: $ => prec(PREC.VAR_IDENTIFIER, /[a-z_][a-zA-Z0-9_']*/), // test type-alias if you uncomment
     variable_identifier: $ => prec(PREC.VAR_IDENTIFIER, /[a-z_][a-zA-Z0-9_]*/),
 
     // e.g. `double` in `let double (x: Int) = x + x`
@@ -1084,7 +1120,6 @@ module.exports = grammar({
     newline: $ => /\n/,
 
     unit: $ => "()",
-
     double_backtick_identifier: $ => token(seq("``", /[^`]+/, "``")),
   },
 });
@@ -1132,9 +1167,12 @@ function dict_literal_base($, contentRule) {
   );
 }
 function dict_content_base($, dict_pair) {
-  return seq(
-    dict_pair,
-    repeat(seq(field("dict_separator", alias(";", $.symbol)), dict_pair)),
+  return choice(
+    seq(
+      dict_pair,
+      repeat(seq(field("dict_separator", alias(";", $.symbol)), dict_pair)),
+    ),
+    seq(dict_pair, repeat(seq($.newline, dict_pair)), optional($.newline)),
   );
 }
 function dict_pair_base($, value) {
@@ -1155,7 +1193,8 @@ function enum_literal_base($, enum_fields) {
       optional(
         choice(
           seq($.indent, field("enum_fields", enum_fields), $.dedent),
-          field("enum_fields", enum_fields),
+          // field("enum_fields", enum_fields),
+          field("enum_fields", seq(enum_fields, optional(/\n/))),
         ),
       ),
     ),
@@ -1163,7 +1202,7 @@ function enum_literal_base($, enum_fields) {
 }
 function enum_fields_base($, fields) {
   return prec(
-    1,
+    1, // this is for conflict between `paren_expression` and `enum_fields`
     choice(
       seq(
         field("symbol_open_paren", alias("(", $.symbol)),
@@ -1177,7 +1216,7 @@ function enum_fields_base($, fields) {
         ),
         field("symbol_close_paren", alias(")", $.symbol)),
       ),
-      prec.right(repeat1(prec.right(fields))),
+      prec.right(repeat1(fields)),
     ),
   );
 }

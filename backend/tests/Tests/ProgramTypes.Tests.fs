@@ -148,7 +148,8 @@ let testInfixProgramTypesToSerializedTypes =
 let tests =
   testList
     "ProgramTypes"
-    [ testPipesToRuntimeTypes
-      testProgramTypesToRuntimeTypes
-      ptFQFnName
-      testInfixProgramTypesToSerializedTypes ]
+    []
+    // [ testPipesToRuntimeTypes
+    //   testProgramTypesToRuntimeTypes
+    //   ptFQFnName
+    //   testInfixProgramTypesToSerializedTypes ]

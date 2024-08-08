@@ -194,3 +194,337 @@ MyEnum.TwoArgs
     )
   )
 )
+
+
+==================
+test
+==================
+
+Stdlib.Tuple3.mapThird (fun x -> Stdlib.Float.roundDown x) (1L, "two", 3.14)
+== (1L, "two", 3L)
+
+Stdlib.Tuple3.mapAllThree
+  (fun x -> Stdlib.String.toUppercase x)
+  (fun x -> x - 2L)
+  (fun x -> Stdlib.String.toUppercase x)
+  ("one", 2L, "pi")
+== ("ONE", 0L, "PI")
+
+---
+
+(source_file
+  (expression
+    (infix_operation
+      (expression
+        (apply
+          (qualified_fn_name
+            (module_identifier)
+            (symbol)
+            (module_identifier)
+            (symbol)
+            (fn_identifier))
+          (paren_expression
+            (symbol)
+            (expression
+              (lambda_expression
+                (keyword)
+                (lambda_pats
+                  (let_pattern
+                    (variable_identifier)))
+                (symbol)
+                (expression
+                  (apply
+                    (qualified_fn_name
+                      (module_identifier)
+                      (symbol)
+                      (module_identifier)
+                      (symbol)
+                      (fn_identifier))
+                    (simple_expression
+                      (variable_identifier))))))
+            (symbol))
+          (simple_expression
+            (tuple_literal
+              (symbol)
+              (expression
+                (simple_expression
+                  (int64_literal
+                    (digits
+                      (positive_digits))
+                    (symbol))))
+              (symbol)
+              (expression
+                (simple_expression
+                  (string_segment
+                    (string_literal
+                      (symbol)
+                      (string_content)
+                      (symbol)))))
+              (tuple_literal_the_rest
+                (symbol)
+                (expression
+                  (simple_expression
+                    (float_literal))))
+              (symbol)))
+          (newline)))
+      (operator)
+      (expression
+        (simple_expression
+          (tuple_literal
+            (symbol)
+            (expression
+              (simple_expression
+                (int64_literal
+                  (digits
+                    (positive_digits))
+                  (symbol))))
+            (symbol)
+            (expression
+              (simple_expression
+                (string_segment
+                  (string_literal
+                    (symbol)
+                    (string_content)
+                    (symbol)))))
+            (tuple_literal_the_rest
+              (symbol)
+              (expression
+                (simple_expression
+                  (int64_literal
+                    (digits
+                      (positive_digits))
+                    (symbol)))))
+            (symbol))))))
+  (expression
+    (infix_operation
+      (expression
+        (apply
+          (qualified_fn_name
+            (module_identifier)
+            (symbol)
+            (module_identifier)
+            (symbol)
+            (fn_identifier))
+          (indent)
+          (expression
+            (paren_expression
+              (symbol)
+              (expression
+                (lambda_expression
+                  (keyword)
+                  (lambda_pats
+                    (let_pattern
+                      (variable_identifier)))
+                  (symbol)
+                  (expression
+                    (apply
+                      (qualified_fn_name
+                        (module_identifier)
+                        (symbol)
+                        (module_identifier)
+                        (symbol)
+                        (fn_identifier))
+                      (simple_expression
+                        (variable_identifier))))))
+              (symbol)))
+          (expression
+            (paren_expression
+              (symbol)
+              (expression
+                (lambda_expression
+                  (keyword)
+                  (lambda_pats
+                    (let_pattern
+                      (variable_identifier)))
+                  (symbol)
+                  (expression
+                    (infix_operation
+                      (expression
+                        (simple_expression
+                          (variable_identifier)))
+                      (operator)
+                      (expression
+                        (simple_expression
+                          (int64_literal
+                            (digits
+                              (positive_digits))
+                            (symbol))))))))
+              (symbol)))
+          (expression
+            (paren_expression
+              (symbol)
+              (expression
+                (lambda_expression
+                  (keyword)
+                  (lambda_pats
+                    (let_pattern
+                      (variable_identifier)))
+                  (symbol)
+                  (expression
+                    (apply
+                      (qualified_fn_name
+                        (module_identifier)
+                        (symbol)
+                        (module_identifier)
+                        (symbol)
+                        (fn_identifier))
+                      (simple_expression
+                        (variable_identifier))))))
+              (symbol)))
+          (expression
+            (simple_expression
+              (tuple_literal
+                (symbol)
+                (expression
+                  (simple_expression
+                    (string_segment
+                      (string_literal
+                        (symbol)
+                        (string_content)
+                        (symbol)))))
+                (symbol)
+                (expression
+                  (simple_expression
+                    (int64_literal
+                      (digits
+                        (positive_digits))
+                      (symbol))))
+                (tuple_literal_the_rest
+                  (symbol)
+                  (expression
+                    (simple_expression
+                      (string_segment
+                        (string_literal
+                          (symbol)
+                          (string_content)
+                          (symbol))))))
+                (symbol))))
+          (dedent)))
+      (operator)
+      (expression
+        (simple_expression
+          (tuple_literal
+            (symbol)
+            (expression
+              (simple_expression
+                (string_segment
+                  (string_literal
+                    (symbol)
+                    (string_content)
+                    (symbol)))))
+            (symbol)
+            (expression
+              (simple_expression
+                (int64_literal
+                  (digits
+                    (positive_digits))
+                  (symbol))))
+            (tuple_literal_the_rest
+              (symbol)
+              (expression
+                (simple_expression
+                  (string_segment
+                    (string_literal
+                      (symbol)
+                      (string_content)
+                      (symbol))))))
+            (symbol)))))))
+
+
+
+
+==================
+enum test 2
+==================
+
+Stdlib.Float.parse "-141s"
+== Stdlib.Result.Result.Error Stdlib.Float.ParseError.BadFormat
+
+Stdlib.Float.parse ""
+== Stdlib.Result.Result.Error Stdlib.Float.ParseError.BadFormat
+---
+
+(source_file
+      (expression
+        (infix_operation
+          (expression
+            (apply
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (module_identifier)
+                (symbol)
+                (fn_identifier))
+              (simple_expression
+                (string_segment
+                  (string_literal
+                    (symbol)
+                    (string_content)
+                    (symbol))))
+              (newline)))
+          (operator)
+          (expression
+            (simple_expression
+              (enum_literal
+                (qualified_type_name
+                  (module_identifier)
+                  (symbol)
+                  (module_identifier)
+                  (symbol)
+                  (type_identifier))
+                (symbol)
+                (enum_case_identifier)
+                (enum_fields
+                  (expression
+                    (simple_expression
+                      (enum_literal
+                        (qualified_type_name
+                          (module_identifier)
+                          (symbol)
+                          (module_identifier)
+                          (symbol)
+                          (type_identifier))
+                        (symbol)
+                        (enum_case_identifier))))))))))
+      (expression
+        (infix_operation
+          (expression
+            (apply
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (module_identifier)
+                (symbol)
+                (fn_identifier))
+              (simple_expression
+                (string_segment
+                  (string_literal
+                    (symbol)
+                    (symbol))))
+              (newline)))
+          (operator)
+          (expression
+            (simple_expression
+              (enum_literal
+                (qualified_type_name
+                  (module_identifier)
+                  (symbol)
+                  (module_identifier)
+                  (symbol)
+                  (type_identifier))
+                (symbol)
+                (enum_case_identifier)
+                (enum_fields
+                  (expression
+                    (simple_expression
+                      (enum_literal
+                        (qualified_type_name
+                          (module_identifier)
+                          (symbol)
+                          (module_identifier)
+                          (symbol)
+                          (type_identifier))
+                        (symbol)
+                        (enum_case_identifier)))))))))))
+
+

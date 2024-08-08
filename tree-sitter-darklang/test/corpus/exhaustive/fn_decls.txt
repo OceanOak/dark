@@ -286,3 +286,108 @@ let processItem (item: Item) : Result<Items.Item, Error.ProcessingError> =
     (dedent)
   )
 )
+
+
+==================
+char test
+==================
+
+let smiley () : Char =
+  "😂" |> Stdlib.String.head |> Builtin.unwrap
+
+// let hand () : Char =
+//   "✋🏿" |> Stdlib.String.head |> Builtin.unwrap
+
+// let family () : Char =
+//   "👩‍👩‍👧‍👦" |> Stdlib.String.head |> Builtin.unwrap
+
+Stdlib.Char.toLowercase 'A' == 'a'
+Stdlib.Char.toLowercase 'a' == 'a'
+
+---
+
+(source_file
+  (fn_decl
+    (keyword)
+    (fn_identifier)
+    (fn_decl_params
+      (unit))
+    (symbol)
+    (type_reference
+      (builtin_type))
+    (symbol)
+    (indent)
+    (expression
+      (pipe_expression
+        (expression
+          (pipe_expression
+            (expression
+              (simple_expression
+                (string_segment
+                  (string_literal
+                    (symbol)
+                    (string_content)
+                    (symbol)))))
+            (pipe_exprs
+              (symbol)
+              (pipe_expr
+                (pipe_fn_call
+                  (qualified_fn_name
+                    (module_identifier)
+                    (symbol)
+                    (module_identifier)
+                    (symbol)
+                    (fn_identifier)))))))
+        (pipe_exprs
+          (symbol)
+          (pipe_expr
+            (pipe_fn_call
+              (qualified_fn_name
+                (module_identifier)
+                (symbol)
+                (fn_identifier)))))))
+    (dedent))
+  (expression
+    (infix_operation
+      (expression
+        (apply
+          (qualified_fn_name
+            (module_identifier)
+            (symbol)
+            (module_identifier)
+            (symbol)
+            (fn_identifier))
+          (simple_expression
+            (char_literal
+              (symbol)
+              (character)
+              (symbol)))))
+      (operator)
+      (expression
+        (simple_expression
+          (char_literal
+            (symbol)
+            (character)
+            (symbol))))))
+  (expression
+    (infix_operation
+      (expression
+        (apply
+          (qualified_fn_name
+            (module_identifier)
+            (symbol)
+            (module_identifier)
+            (symbol)
+            (fn_identifier))
+          (simple_expression
+            (char_literal
+              (symbol)
+              (character)
+              (symbol)))))
+      (operator)
+      (expression
+        (simple_expression
+          (char_literal
+            (symbol)
+            (character)
+            (symbol)))))))

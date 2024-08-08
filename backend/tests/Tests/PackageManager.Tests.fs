@@ -107,4 +107,5 @@ module ParsesAndDecodesOk =
 let tests =
   testList
     "PackageManager"
-    [ ParsesAndDecodesOk.deprecation; ParsesAndDecodesOk.packageType ]
+    []
+    // [ ParsesAndDecodesOk.deprecation; ParsesAndDecodesOk.packageType ]

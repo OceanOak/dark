@@ -1,0 +1,21 @@
+type MyType = Int64
+type MyString = List<String>
+
+
+let fizzbuzz (n: Int64) : MyString =
+  let list = PACKAGE.Darklang.Stdlib.List.range 1L n
+
+  PACKAGE.Darklang.Stdlib.List.map list (fun i ->
+    match ((i % 3L == 0L), (i % 5L == 0L)) with
+    | (true, false) -> "Fizz"
+    | (false, true) -> "Buzz"
+    | (true, true) -> "FizzBuzz"
+    | (false, false) -> PACKAGE.Darklang.Stdlib.Int64.toString i)
+
+let wrapperFunction (n: Int64) : MyType =
+  let result = fizzbuzz n
+  let _ = PACKAGE.Darklang.Stdlib.List.map result (fun x -> Builtin.printLine x)
+  0L
+
+
+wrapperFunction 15L
