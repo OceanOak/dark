@@ -350,7 +350,28 @@ module Expr =
 
   and stringSegmentToRT (segment : PT.StringSegment) : RT.StringSegment =
     match segment with
-    | PT.StringText text -> RT.StringText text
+    | PT.StringText text ->
+      text
+      |> fun s ->
+        System.Text.RegularExpressions.Regex.Replace(s, @"\\x([0-9A-Fa-f]{2})",
+          fun m ->
+            let hexValue = System.Convert.ToByte(m.Groups[1].Value, 16)
+            string (char hexValue))
+      |> fun s ->
+        System.Text.RegularExpressions.Regex.Replace(s, @"\\u([0-9A-Fa-f]{4})",
+          fun m ->
+            let unicodeValue = System.Convert.ToInt32(m.Groups[1].Value, 16)
+            string (char unicodeValue))
+      |> fun s -> s.Replace(@"\t", "\t")
+      |> fun s -> s.Replace(@"\n", "\n")
+      |> fun s -> s.Replace(@"\r", "\r")
+      |> fun s -> s.Replace(@"\b", "\b")
+      |> fun s -> s.Replace(@"\f", "\f")
+      |> fun s -> s.Replace(@"\v", "\v")
+      |> fun s -> s.Replace(@"\""", "\"")
+      |> fun s -> s.Replace(@"\'", "'")
+      |> fun s -> s.Replace(@"\\", "\\")
+      |> RT.StringText
     | PT.StringInterpolation expr -> RT.StringInterpolation(toRT expr)
 
 

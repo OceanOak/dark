@@ -219,3 +219,12 @@ $"""test {"1"}"""
     )
   )
 )
+
+
+==================
+test
+==================
+
+Stdlib.String.trim " \xe2\x80\x83foo\xe2\x80\x83bar\xe2\x80\x83 "
+== "\xe2\x80\x83foo\xe2\x80\x83bar\xe2\x80\x83"
+

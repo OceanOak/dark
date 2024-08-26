@@ -492,8 +492,7 @@ let typeDeclarations =
   |> testList "type declarations"
 
 let exprs =
-  [
-    // units
+  [ // units
     t "unit literal" "()" "()" [] [] [] false
 
     // bools
@@ -528,10 +527,39 @@ let exprs =
     t "float literal 0.775" "0.775" "0.775" [] [] [] false
 
     // string literals
+    t
+      "test"
+      """
+      let tokenize
+        (text: String)
+        : List<(TokenType * (Int64 * Int64) * (Int64 * Int64))>
+        =
+        text
+        |> PACKAGE.Darklang.LanguageTools.Parser.parseToSimplifiedTree
+      """
+      """let tokenize (text: String): List<(TokenType * (Int64 * Int64) * (Int64 * Int64))> =
+  text
+  |> PACKAGE.Darklang.LanguageTools.Parser.parseToSimplifiedTree"""
+      []
+      []
+      []
+      false
     t "empty string" "\"\"" "\"\"" [] [] [] false
-    t "hello" "\"hello\"" "\"hello\"" [] [] [] false
-    t "hello tab world" "\"hello\\tworld\"" "\"hello\\tworld\"" [] [] [] false
+    t "hello" @"""hello""" @"""hello""" [] [] [] false
+    t "hello" @"""hello""" "\"hello\"" [] [] [] false
+    t "hello tab world" @"""hello\tworld""" "\"hello\\tworld\"" [] [] [] false
+    t "unicode" @"""ᅡᆨ""" "\"ᅡᆨ\"" [] [] [] false
+    t "unicodew" "\"żółw\" == \"żółw\"" "\"żółw\" == \"żółw\"" [] [] [] false
     t "egc" "\"👩‍👩‍👧‍👦\"" "\"👩‍👩‍👧‍👦\"" [] [] [] false
+
+    t
+      "test"
+      "let smiley () : Char = \"😂\" |> Stdlib.String.head |> Builtin.unwrap"
+      "let smiley () : Char = \"😂\" |> Stdlib.String.head |> Builtin.unwrap"
+      []
+      []
+      []
+      false
     t "unicode" "\"żółw\"" "\"żółw\"" [] [] [] false
     t "string interpolation" "$\"hello {name}\"" "$\"hello {name}\"" [] [] [] false
     t
@@ -548,11 +576,11 @@ let exprs =
 
 
 
-		Expected: (b: Int64)
+Expected: (b: Int64)
 
-		Actual: a Float: 1.0\"\"\""
+Actual: a Float: 1.0\"\"\""
 
-      "\"int64Multiply's 2nd argument (`b`) should be an Int64. However, a Float (1.0) was passed instead.\\n\\n\\n\\n\\t\\tExpected: (b: Int64)\\n\\n\\t\\tActual: a Float: 1.0\""
+      "\"int64Multiply's 2nd argument (`b`) should be an Int64. However, a Float (1.0) was passed instead.\n\n\n\nExpected: (b: Int64)\n\nActual: a Float: 1.0\""
       []
       []
       []
@@ -596,6 +624,14 @@ let exprs =
       false
 
     // dict literal
+    // t
+    //   "dict test"
+    //   "Dict { ``Content-Length`` = 1L }"
+    //   "Dict { ``Content-Length`` = 1L }"
+    //   []
+    //   []
+    //   []
+    //   false
     t "empty dict" "Dict { }" "Dict {  }" [] [] [] false
     t "simple int dict" "Dict { a = 1L }" "Dict { a = 1L }" [] [] [] false
     t
@@ -623,18 +659,64 @@ let exprs =
       []
       false
 
-    // tuple literals
-    t "tuple 2" "(1L, \"hello\")" "(1L, \"hello\")" [] [] [] false
-    t "tuple 3" "(1L, \"hello\", 2L)" "(1L, \"hello\", 2L)" [] [] [] false
     t
-      "tuple 4"
-      "(1L, \"hello\", 2L, true)"
-      "(1L, \"hello\", 2L, true)"
+      "dict"
+      "Dict
+  { key2 = \"key2val21val22\"
+    key1 = \"key1val11val12\" }"
+      "Dict { key2 = \"key2val21val22\"; key1 = \"key1val11val12\" }"
       []
       []
       []
       false
-    t "tuple with expr" "(1L, 2L + 3L, 4L)" "(1L, (2L) + (3L), 4L)" [] [] [] false // CLEANUP
+
+    // enum literal
+    t "simple enum literal" "Color.Red()" "Color.Red()" [] [] [] false
+    t
+      "option none, short"
+      "Stdlib.Option.None()"
+      "Stdlib.Option.None()"
+      []
+      []
+      []
+      false
+    t
+      "option none, long"
+      "PACKAGE.Darklang.Stdlib.Option.Option.None()"
+      "PACKAGE.Darklang.Stdlib.Option.Option.None()"
+      []
+      []
+      []
+      false
+    t
+      "option some"
+      "PACKAGE.Darklang.Stdlib.Option.Option.Some(1L)"
+      "PACKAGE.Darklang.Stdlib.Option.Option.Some(1L)"
+      []
+      []
+      []
+      false
+    t
+      "custom enum tupled params"
+      "MyEnum.A((1L, 2L))"
+      "MyEnum.A((1L, 2L))"
+      []
+      []
+      []
+      false
+    t "custom enum fn params" "MyEnum.A(1L, 2L)" "MyEnum.A(1L, 2L)" [] [] [] false
+    t
+      "custom enum indexed params"
+      """MyEnum.A(
+  1L,
+  2L
+)"""
+      """MyEnum.A(1L, 2L)"""
+      []
+      []
+      []
+      false
+
 
     // record literals
     t
@@ -691,26 +773,19 @@ let exprs =
       false
 
     // enum literal
-    t "simple enum literal" "Color.Red()" "Color.Red()" [] [] [] false
-    t
-      "option none, short"
-      "Stdlib.Option.None()"
-      "Stdlib.Option.None()"
-      []
-      []
-      []
-      false
+    t "simple enum literal" "Color.Red" "Color.Red" [] [] [] false
+    t "option none, short" "Stdlib.Option.None" "Stdlib.Option.None" [] [] [] false
     t
       "option none, long"
-      "PACKAGE.Darklang.Stdlib.Option.Option.None()"
-      "PACKAGE.Darklang.Stdlib.Option.Option.None()"
+      "PACKAGE.Darklang.Stdlib.Option.Option.None"
+      "PACKAGE.Darklang.Stdlib.Option.Option.None"
       []
       []
       []
       false
     t
       "option some"
-      "PACKAGE.Darklang.Stdlib.Option.Option.Some(1L)"
+      "PACKAGE.Darklang.Stdlib.Option.Option.Some 1L"
       "PACKAGE.Darklang.Stdlib.Option.Option.Some(1L)"
       []
       []
@@ -718,25 +793,13 @@ let exprs =
       false
     t
       "custom enum tupled params"
-      "MyEnum.A((1L, 2L))"
+      "MyEnum.A(1L, 2L)"
       "MyEnum.A((1L, 2L))"
       []
       []
       []
       false
-    t "custom enum fn params" "MyEnum.A(1L, 2L)" "MyEnum.A(1L, 2L)" [] [] [] false
-    t
-      "custom enum indexed params"
-      """MyEnum.A(
-  1L,
-  2L
-)"""
-      """MyEnum.A(1L, 2L)"""
-      []
-      []
-      []
-      false
-
+    t "custom enum fn params" "MyEnum.A 1L 2L" "MyEnum.A(1L, 2L)" [] [] [] false
 
     // qualified constant
     t

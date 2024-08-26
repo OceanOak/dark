@@ -788,7 +788,7 @@ module Darklang =
 
           match constNameNode with
           | Ok constNameNode ->
-            (WrittenTypes.Expr.EConstant(node.range, constNameNode))
+            (WrittenTypes.Expr.EConstant(constNameNode.range, constNameNode))
             |> Stdlib.Result.Result.Ok
 
           | _ -> createUnparseableError node

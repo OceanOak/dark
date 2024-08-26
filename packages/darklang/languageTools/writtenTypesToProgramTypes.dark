@@ -476,7 +476,10 @@ module Darklang =
             let constant =
               Identifiers.QualifiedConst.toPT onMissing pm owner currentModule c
 
-            ProgramTypes.Expr.EConstant(gid (), constant)
+            match constant with
+            | Ok _ ->
+              ProgramTypes.Expr.EConstant(gid (), constant)
+            | Error _ -> ProgramTypes.Expr.EVariable (gid ()) c.constant.name
 
           | EFieldAccess(_, expr, (_, fieldName), _) ->
             ProgramTypes.Expr.EFieldAccess(

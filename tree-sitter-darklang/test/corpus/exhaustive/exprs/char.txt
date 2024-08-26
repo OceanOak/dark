@@ -22,3 +22,17 @@ escape sequence
 (source_file
   (expression
     (simple_expression (char_literal (symbol) (character (char_or_string_escape_sequence)) (symbol)))))
+
+
+==================
+testsss
+==================
+
+let err
+  (v: Stdlib.Result.Result<'a, Stdlib.Json.ParseError.ParseError>)
+  : Result<'a, String> =
+  // v |> Stdlib.Result.mapError Stdlib.Json.ParseError.toString
+  Stdlib.Result.mapError v Stdlib.Json.ParseError.toString()
+
+---
+
