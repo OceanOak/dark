@@ -55,7 +55,8 @@ let parse (sourceCode : string) : Dval =
 
     let fields =
       let mapPoint (point : Point) =
-        let fields = [ "row", DInt64 point.row; "column", DInt64 point.column ]
+        // debuG "point" point.row
+        let fields = [ "row", DInt64 point.row ; "column", DInt64 point.column ]
         DRecord(pointTypeName, pointTypeName, [], Map fields)
 
       let startPos = cursor.Current.StartPosition

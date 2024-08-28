@@ -13,7 +13,7 @@ let htmlTag
   (a: List<(String * Stdlib.Option.Option<String>)>)
   (c: List<Node>)
   : Node =
-    Stdlib.Html.htmlTagNode n a c
+  Stdlib.Html.htmlTagNode n a c
 
 
 let tidyHtml (html: String) : String =
@@ -28,7 +28,10 @@ let tidyHtml (html: String) : String =
 
 (htmlTag "div" [] [ stringNode "yolo" ]) |> nodeToString == "<div>yolo</div>"
 
-(htmlTag "div" [ ("id", (Stdlib.Option.Option.Some("my-div"))) ] [ stringNode "yolo" ])
+(htmlTag
+  "div"
+  [ ("id", (Stdlib.Option.Option.Some("my-div"))) ]
+  [ stringNode "yolo" ])
 |> nodeToString
 == "<div id=\"my-div\">yolo</div>"
 
@@ -124,13 +127,13 @@ let tidyHtml (html: String) : String =
 
 ([ Stdlib.Html.html
     []
-    [ Stdlib.Html.head [] [ Stdlib.Html.title [] [ stringNode "Darklang.com" ] ]
-      Stdlib.Html.body [] [ Stdlib.Html.p [] [ stringNode "welcome to darklang" ] ] ]
-  ]
- |> Stdlib.Html.document)
-== ("<!DOCTYPE html>
+    [ (Stdlib.Html.head [] [ Stdlib.Html.title [] [stringNode "Darklang.com"] ])
+      ( Stdlib.Html.body [] [ Stdlib.Html.p [] [stringNode "welcome to darklang"] ]) ] ]
+|> Stdlib.Html.document)
+==
+("""<!DOCTYPE html>
     <html>
       <head><title>Darklang.com</title></head>
       <body><p>welcome to darklang</p></body>
-    </html>"
-    |> tidyHtml)
+    </html>"""
+  |> tidyHtml)

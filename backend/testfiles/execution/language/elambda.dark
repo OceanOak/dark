@@ -2,6 +2,7 @@
 // == [ (fun x -> -4.611686018e+18) ]
 
 // Test that empty parameters are removed
+// debug ast before pt2rt and after, then in the interpreter
 // (let y = (fun x ___ -> x + 1L)
 //  Stdlib.List.map [ 1L; 2L; 3L; 4L ] y)
 // == [ 2L; 3L; 4L; 5L ]

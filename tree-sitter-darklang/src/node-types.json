@@ -619,6 +619,11 @@
     "fields": {}
   },
   {
+    "type": "constant_or_fn_identifier",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "consts",
     "named": true,
     "fields": {},
@@ -1279,6 +1284,10 @@
         },
         {
           "type": "indent",
+          "named": true
+        },
+        {
+          "type": "newline",
           "named": true
         }
       ]
@@ -2979,7 +2988,7 @@
     }
   },
   {
-    "type": "qualified_const_name",
+    "type": "qualified_const_or_fn_name",
     "named": true,
     "fields": {},
     "children": {
@@ -2987,7 +2996,7 @@
       "required": true,
       "types": [
         {
-          "type": "constant_identifier",
+          "type": "constant_or_fn_identifier",
           "named": true
         },
         {
@@ -3374,7 +3383,7 @@
           "named": true
         },
         {
-          "type": "qualified_const_name",
+          "type": "qualified_const_or_fn_name",
           "named": true
         },
         {
