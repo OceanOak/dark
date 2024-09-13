@@ -33,14 +33,14 @@ let fns : List<BuiltInFn> =
     { name = fn "darkInternalCanvasDBUnlocked" 0
       typeParams = []
       parameters = [ Param.make "canvasID" TUuid "" ]
-      returnType = TList TInt64
+      returnType = TList TUInt64
       description = "Get a list of unlocked DBs"
       fn =
         (function
         | _, _, [ DUuid canvasID ] ->
           uply {
             let! unlocked = UserDB.unlocked canvasID
-            return unlocked |> List.map int64 |> List.map DInt64 |> Dval.list KTInt64
+            return unlocked |> List.map DUInt64 |> Dval.list KTUInt64
           }
         | _ -> incorrectArgs ())
       sqlSpec = NotQueryable

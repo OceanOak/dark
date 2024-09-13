@@ -116,6 +116,7 @@ module.exports = grammar({
         $.const_dict_literal,
         $.const_enum_literal,
         $.unit,
+        // should we allow a const name?
       ),
 
     const_list_literal: $ => list_literal_base($, $.const_list_content),
@@ -405,7 +406,10 @@ module.exports = grammar({
         $.tuple_literal,
         $.record_update,
         $.qualified_const_or_fn_name,
+        $.dbReference,
       ),
+
+    dbReference: $ => $.type_identifier,
 
     expression: $ =>
       choice(
@@ -696,11 +700,23 @@ module.exports = grammar({
     //
     // Record
     record_literal: $ =>
-      seq(
-        field("type_name", $.qualified_type_name),
-        field("symbol_open_brace", alias("{", $.symbol)),
-        optional(field("content", $.record_content)),
-        field("symbol_close_brace", alias("}", $.symbol)),
+      prec.right(
+        choice(
+          seq(
+            field("type_name", $.qualified_type_name),
+            field("symbol_open_brace", alias("{", $.symbol)),
+            optional(field("content", $.record_content)),
+            field("symbol_close_brace", alias("}", $.symbol)),
+          ),
+          seq(
+            field("type_name", $.qualified_type_name),
+            $.indent,
+            field("symbol_open_brace", alias("{", $.symbol)),
+            optional(field("content", $.record_content)),
+            field("symbol_close_brace", alias("}", $.symbol)),
+            optional($.dedent),
+          ),
+        ),
       ),
     record_content: $ =>
       choice(
@@ -1099,12 +1115,15 @@ module.exports = grammar({
       ),
 
     qualified_type_name: $ =>
-      seq(
+      prec(
+        1,
         seq(
-          repeat(seq($.module_identifier, alias(".", $.symbol))),
-          field("type_identifier", $.type_identifier),
+          seq(
+            repeat(seq($.module_identifier, alias(".", $.symbol))),
+            field("type_identifier", $.type_identifier),
+          ),
+          optional(field("type_args", $.type_args)),
         ),
-        optional(field("type_args", $.type_args)),
       ),
 
     type_args: $ =>

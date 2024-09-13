@@ -163,9 +163,23 @@ module MatchPattern =
 
 
 module Expr =
+  let replaceEscapeSequences (s: string) : string =
+    s
+    |> fun s -> s.Replace(@"\t", "\t")
+    |> fun s -> s.Replace(@"\n", "\n")
+    |> fun s -> s.Replace(@"\r", "\r")
+    |> fun s -> s.Replace(@"\b", "\b")
+    |> fun s -> s.Replace(@"\f", "\f")
+    |> fun s -> s.Replace(@"\v", "\v")
+    |> fun s -> s.Replace(@"\""", "\"")
+    |> fun s -> s.Replace(@"\'", "'")
+    |> fun s -> s.Replace(@"\\", "\\")
+
   let rec toRT (e : PT.Expr) : RT.Expr =
     match e with
-    | PT.EChar(id, char) -> RT.EChar(id, char)
+    | PT.EChar(id, char) ->
+      let char =  char |> replaceEscapeSequences
+      RT.EChar(id, char)
     | PT.EInt64(id, num) -> RT.EInt64(id, num)
     | PT.EUInt64(id, num) -> RT.EUInt64(id, num)
     | PT.EInt8(id, num) -> RT.EInt8(id, num)
@@ -350,7 +364,20 @@ module Expr =
 
   and stringSegmentToRT (segment : PT.StringSegment) : RT.StringSegment =
     match segment with
-    | PT.StringText text -> RT.StringText text
+    | PT.StringText text ->
+      text
+      |> fun s ->
+        System.Text.RegularExpressions.Regex.Replace(s, @"\\x([0-9A-Fa-f]{2})",
+          fun m ->
+            let hexValue = System.Convert.ToByte(m.Groups[1].Value, 16)
+            string (char hexValue))
+      |> fun s ->
+        System.Text.RegularExpressions.Regex.Replace(s, @"\\u([0-9A-Fa-f]{4})",
+          fun m ->
+            let unicodeValue = System.Convert.ToInt32(m.Groups[1].Value, 16)
+            string (char unicodeValue))
+      |> replaceEscapeSequences
+      |> RT.StringText
     | PT.StringInterpolation expr -> RT.StringInterpolation(toRT expr)
 
 
