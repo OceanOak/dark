@@ -677,7 +677,11 @@ module.exports = grammar({
 
     //
     // Floats
-    float_literal: $ => /[+-]?[0-9]+\.[0-9]+/,
+    float_literal: $ =>
+      choice(/[+-]?[0-9]+\.[0-9]+/, $.infinity, $.negative_infinity),
+
+    infinity: $ => /Infinity/,
+    negative_infinity: $ => /-Infinity/,
 
     //
     // List

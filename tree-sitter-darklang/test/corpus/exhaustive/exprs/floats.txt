@@ -27,3 +27,33 @@ float literal (zero)
 
 ---
 (source_file (expression (simple_expression (float_literal))))
+
+
+==================
+infinity
+==================
+
+Infinity
+
+---
+
+(source_file
+  (expression
+    (simple_expression
+      (float_literal
+        (infinity)))))
+
+
+==================
+infinity (negative)
+==================
+
+-Infinity
+
+---
+
+(source_file
+  (expression
+    (simple_expression
+      (float_literal
+        (negative_infinity)))))

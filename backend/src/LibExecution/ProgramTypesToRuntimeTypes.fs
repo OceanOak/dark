@@ -194,9 +194,13 @@ module Expr =
     | PT.EString(id, segments) -> RT.EString(id, List.map stringSegmentToRT segments)
 
     | PT.EFloat(id, sign, whole, fraction) ->
-      let whole = if whole = "" then "0" else whole
-      let fraction = if fraction = "" then "0" else fraction
-      RT.EFloat(id, makeFloat sign whole fraction)
+      match sign, whole, fraction with
+      | Sign.Positive, "Infinity", _ -> RT.EFloat(id, System.Double.PositiveInfinity)
+      | Sign.Negative, "Infinity", _ -> RT.EFloat(id, System.Double.NegativeInfinity)
+      | sign, whole, fraction ->
+        let whole = if whole = "" then "0" else whole
+        let fraction = if fraction = "" then "0" else fraction
+        RT.EFloat(id, makeFloat sign whole fraction)
     | PT.EBool(id, b) -> RT.EBool(id, b)
     | PT.EUnit id -> RT.EUnit id
 
