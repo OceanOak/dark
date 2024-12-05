@@ -1,0 +1,92 @@
+module Darklang =
+  module Stdlib =
+    module Cli =
+      module Cmd =
+        let removeFile (path: String) : Result.Result<Unit, String> =
+          Cli.executeWithUnitOrStdErr $"del /F /Q {path}"
+
+        let removeDirectory (path: String) : Result.Result<Unit, String> =
+          Cli.executeWithUnitOrStdErr $"rmdir /S /Q {path}"
+
+        let ensureDirectoryExists (path: String) : Result.Result<Unit, String> =
+          Cli.executeWithUnitOrStdErr $"if not exist {path} mkdir {path}"
+
+        /// Grants execute permissions to the specified file. (chmod +x <param path>)
+        /// If successful, returns {{Ok ()}}. Otherwise, returns an {{Error <var stderr>}}
+        let grantExecutePermission (path: String) : Result.Result<Unit, String> =
+          Cli.executeWithUnitOrStdErr $"chmod +x {path}"
+
+
+        /// Adds an alias to the user's default shell configuration file.
+        /// The alias will be available in new shell sessions.
+        let addAlias
+          (shell: Shell.Shell)
+          (alias: String)
+          (command: String)
+          : Result.Result<String, String> =
+          match shell with
+          | Cmd ->
+            let doskeyCommand = $"doskey {alias}={command} "
+            doskeyCommand
+          | _ -> Result.Result.Error "Unsupported shell"
+
+
+        /// Deletes an alias from the user's default shell configuration file.
+        let deleteAlias
+          (shell: Shell.Shell)
+          (alias: String)
+          : Result.Result<String, String> =
+          match shell with
+          | PowerShell -> ()
+          | Cmd -> Cmd.deleteAlias alias
+          | _ -> Result.Result.Error "Unsupported OS or shell"
+
+
+
+
+
+
+
+// .\darklang-alpha-dd5655524e-win-x64.exe help
+// Error starting Darklang CLI: error: One or more errors occurred. (No such host is known. (darklang-packages.dlio.localhost:11001))
+// Error starting Darklang CLI: exceptionType: System.AggregateException
+// Error starting Darklang CLI:    at System.Threading.Tasks.Task.ThrowIfExceptional(Boolean)
+//    at System.Threading.Tasks.Task`1.GetResultCore(Boolean)
+//    at System.Threading.Tasks.Task`1.get_Result()
+//    at Cli.Main.main(String[])
+// prefex.inner[0]: error: No such host is known. (darklang-packages.dlio.localhost:11001)
+// prefex.inner[0]: exceptionType: System.Net.Http.HttpRequestException
+// prefex.inner[0]:    at System.Net.Http.HttpConnectionPool.ConnectToTcpHostAsync(String, Int32, HttpRequestMessage, Boolean, CancellationToken)
+//    at System.Net.Http.HttpConnectionPool.ConnectAsync(HttpRequestMessage, Boolean, CancellationToken)
+//    at System.Net.Http.HttpConnectionPool.CreateHttp11ConnectionAsync(HttpRequestMessage, Boolean, CancellationToken)
+//    at System.Net.Http.HttpConnectionPool.AddHttp11ConnectionAsync(QueueItem)
+//    at System.Threading.Tasks.TaskCompletionSourceWithCancellation`1.WaitWithCancellationAsync(CancellationToken)
+//    at System.Net.Http.HttpConnectionPool.SendWithVersionDetectionAndRetryAsync(HttpRequestMessage, Boolean, Boolean, CancellationToken)
+//    at System.Net.Http.RedirectHandler.SendAsync(HttpRequestMessage, Boolean, CancellationToken)
+//    at System.Net.Http.HttpClient.<SendAsync>g__Core|83_0(HttpRequestMessage, HttpCompletionOption, CancellationTokenSource, Boolean, CancellationTokenSource, CancellationToken)
+//    at LibPackageManager.PackageManager.fetch@58-6.Invoke(Unit)
+//    at Ply.TplPrimitives.PlyAwaitable`2.Invoke(Unit)
+//    at LibPackageManager.PackageManager.withCache@43-2.Invoke(FSharpResult`2)
+//    at Ply.TplPrimitives.PlyAwaitable`2.Invoke(Unit)
+//    at Ply.TplPrimitives.PlyAwaitable`2.Invoke(Unit)
+//    at LibExecution.Interpreter.callFn@958.Invoke(FSharpResult`2)
+//    at Ply.TplPrimitives.PlyAwaitable`2.Invoke(Unit)
+//    at Ply.TplPrimitives.PlyAwaitable`2.Invoke(Unit)
+//    at LibExecution.Interpreter.callFn@951-3.Invoke(FSharpResult`2)
+//    at Ply.TplPrimitives.PlyAwaitable`2.Invoke(Unit)
+//    at Ply.TplPrimitives.PlyAwaitable`2.Invoke(Unit)
+//    at LibExecution.Execution.executeFunction@76-3.Invoke(FSharpResult`2)
+//    at Ply.TplPrimitives.PlyAwaitable`2.Invoke(Unit)
+//    at Ply.TplPrimitives.AwaitableContinuation`3.Invoke(Unit)
+//    at LibExecution.Execution.executeFunction@72-4.Invoke(Exception)
+//    at Ply.TplPrimitives.AwaitableContinuation`3.Invoke(Unit)
+//    at Ply.TplPrimitives.tryFinally@257.Invoke(AwaitableContinuation`3)
+//    at Ply.TplPrimitives.ContinuationStateMachine`1.System-Runtime-CompilerServices-IAsyncStateMachine-MoveNext()
+//    at Cli.Main.execute@97-1.Invoke(Unit)
+//    at Ply.TplPrimitives.ContinuationStateMachine`1.System-Runtime-CompilerServices-IAsyncStateMachine-MoveNext()
+// prefex.inner[1]: error: No such host is known.
+// prefex.inner[1]: exceptionType: System.Net.Sockets.SocketException
+// prefex.inner[1]:    at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.ThrowException(SocketError, CancellationToken)
+//    at System.Net.Sockets.Socket.AwaitableSocketAsyncEventArgs.System.Threading.Tasks.Sources.IValueTaskSource.GetResult(Int16)
+//    at System.Net.Sockets.Socket.<ConnectAsync>g__WaitForConnectWithCancellation|285_0(AwaitableSocketAsyncEventArgs, ValueTask, CancellationToken)
+//    at System.Net.Http.HttpConnectionPool.ConnectToTcpHostAsync(String, Int32, HttpRequestMessage, Boolean, CancellationToken)

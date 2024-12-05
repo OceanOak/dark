@@ -25,7 +25,7 @@ module Darklang =
         if result.exitCode == 0L then
           Stdlib.Result.Result.Ok()
         else
-          Stdlib.Result.Result.Error result.stderr
+          result
 
 
       /// Execute a command in the CLI,
@@ -39,4 +39,4 @@ module Darklang =
         if result.exitCode == 0L then
           Stdlib.Result.Result.Ok result.stdout
         else
-          Stdlib.Result.Result.Error result.stderr
+          result

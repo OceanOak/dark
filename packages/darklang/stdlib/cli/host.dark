@@ -9,6 +9,7 @@ module Darklang =
 
         let getOS () : Stdlib.Result.Result<OS, String> =
           let os = Stdlib.Cli.execute "uname"
+          Builtin.debug "os" os
 
           if os.exitCode == 0L then
             let os = os.stdout |> Stdlib.String.trim
@@ -16,10 +17,17 @@ module Darklang =
             match os with
             | "Linux" -> Stdlib.Result.Result.Ok OS.Linux
             | "Darwin" -> Stdlib.Result.Result.Ok OS.MacOS
-            | "Windows" -> Stdlib.Result.Result.Ok OS.Windows
+           // | "Windows" -> Stdlib.Result.Result.Ok OS.Windows
             | _ -> Stdlib.Result.Result.Error "Unsupported OS"
           else
-            Stdlib.Result.Result.Error os.stderr
+            let os = Stdlib.Cli.execute "echo %OS%"
+            Builtin.debug "os2" os
+            if os.exitCode == 0L then
+              match os.stdout |> Stdlib.String.trim with
+              | "Windows_NT" -> Stdlib.Result.Result.Ok OS.Windows
+              | _ -> Stdlib.Result.Result.Error "Unsupported OS"
+            else
+              os
 
 
       module Architecture =
@@ -44,13 +52,24 @@ module Darklang =
             | "armv7l" -> Stdlib.Result.Result.Ok Architecture.Armv7l
             | _ -> Stdlib.Result.Result.Error "Unsupported architecture"
           else
-            Stdlib.Result.Result.Error arch.stderr
+            Builtin.debug "arch2" arch
+            let arch = Stdlib.Cli.execute "echo %PROCESSOR_ARCHITECTURE%"
+            if arch.exitCode == 0L then
+              let arch = arch.stdout |> Stdlib.String.trim
+              match arch with
+              | "AMD64" -> Stdlib.Result.Result.Ok Architecture.Aarch64
+              | "x86" ->Stdlib.Result.Result.Ok Architecture.X86_64
+              | "ARM64" -> Stdlib.Result.Result.Ok Architecture.Arm64
+              | _ -> Stdlib.Result.Result.Error "Unsupported architecture"
+            else
+              Stdlib.Result.Result.Error arch.stderr
 
 
       module Shell =
         type Shell =
           | Bash
           | Zsh
+          | Cmd
 
         /// Determines the default shell used by the current user.
         /// Returns  {{Ok <Shell>}} if successful, or {{Error}} with a message if the shell is unsupported or an error occurs.
@@ -60,7 +79,20 @@ module Darklang =
             match Stdlib.String.trim shell with
             | "/bin/bash" -> Stdlib.Result.Result.Ok Shell.Bash
             | "/bin/zsh" -> Stdlib.Result.Result.Ok Shell.Zsh
-            | _ -> Stdlib.Result.Result.Error "Unsupported shell")
+            | _ ->
+              (Stdlib.Cli.executeWithStdOutOrStdErr "echo %COMSPEC%")
+              |> Stdlib.Result.andThen (fun shell ->
+                let shell =
+                  shell
+                  |> Stdlib.String.trim
+                  |> Stdlib.String.split "\\"
+                  |> Stdlib.List.last
+                  |> Builtin.unwrap
+                Builtin.debug "shellùùùùùùùùùùùùùùùù" shell
+                match shell with
+                | "cmd.exe" -> Stdlib.Result.Result.Ok Shell.Cmd
+                | _ ->
+                  Stdlib.Result.Result.Error "Unsupported shell"))
 
 
       module Host =
@@ -76,6 +108,10 @@ module Darklang =
           let arch = Architecture.getArchitecture ()
           let defaultShell = Shell.getDefaultShell ()
 
+          Builtin.debug "os" os
+          Builtin.debug "arch" arch
+          Builtin.debug "defaultShell" defaultShell
+
           match os, arch, defaultShell with
           | Ok os, Ok arch, Ok defaultShell ->
             Stdlib.Result.Result.Ok(
@@ -86,10 +122,10 @@ module Darklang =
             )
 
           | Error _osExitCode, _, _ ->
-            Stdlib.Result.Result.Error $"Couldn't determine host OS: ${arch.stderr}"
+            Stdlib.Result.Result.Error $"Couldn't determine host OS"
           | _, Error _archExitCode, _ ->
             Stdlib.Result.Result.Error
-              $"Couldn't determine host architecture: ${arch.stderr}"
+              $"Couldn't determine host architecture:"
           | _, _, Error _shellExitCode ->
             Stdlib.Result.Result.Error
-              $"Couldn't determine host default shell: ${arch.stderr}"
+              $"Couldn't determine host default shell:"
