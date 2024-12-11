@@ -1,0 +1,48 @@
+module Darklang =
+  module Stdlib =
+    module Cli =
+      module PowerShell =
+        let getHomeDirectory () : Result.Result<String, String> =
+          let dir = Cli.execute "powershell.exe -Command \"echo $env:USERPROFILE\""
+
+          if dir.exitCode == 0L then
+            let dir = dir.stdout |> String.trim
+            Stdlib.Result.Result.Ok dir
+          else
+            Stdlib.Result.Result.Error dir.stderr
+
+        let createFile (path: String) : Result.Result<Unit, String> =
+          Cli.executeWithUnitOrStdErr
+            $"powershell.exe -Command \"New-Item -Path '{path}' -ItemType File -Force\""
+
+        let removeFile (path: String) : Result.Result<Unit, String> =
+          Cli.executeWithUnitOrStdErr
+            $"powershell.exe -Command \"Remove-Item -Path '{path}' -Recurse -Force\""
+
+        let ensureDirectoryExists (path: String) : Result.Result<Unit, String> =
+          Cli.executeWithUnitOrStdErr
+            $"powershell.exe -Command \"if (-not (Test-Path -Path '{path}')) {{ New-Item -Path '{path}' -ItemType Directory }}\""
+
+        /// Grants execute permissions to the specified file. (chmod +x <param path>)
+        /// If successful, returns {{Ok ()}}. Otherwise, returns an {{Error <var stderr>}}
+        let grantExecutePermission (path: String) : Result.Result<Unit, String> =
+          let path = Stdlib.String.replaceAll path "/" "\\"
+
+          Cli.executeWithUnitOrStdErr
+            $"powershell.exe -Command \"& icacls '{path}' /grant 'Everyone:RX'\""
+
+
+        let addAlias
+          (alias: String)
+          (command: String)
+          : Result.Result<Unit, String> =
+          let addAliasCommand =
+            $"""powershell.exe -Command "Set-Alias -Name {alias} -Value {command}; Add-Content -Path $PROFILE -Value 'Set-Alias -Name {alias} -Value {command}'; . $PROFILE" """
+
+          Cli.executeWithUnitOrStdErr addAliasCommand
+
+        let deleteAlias (alias: String) : Result.Result<Unit, String> =
+          let deleteAliasCommand =
+            """powershell.exe -Command "(Get-Content $PROFILE) -replace 'Set-Alias -Name dark.*', '' | Set-Content $PROFILE" """
+
+          Cli.executeWithUnitOrStdErr deleteAliasCommand

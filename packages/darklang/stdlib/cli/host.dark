@@ -16,10 +16,17 @@ module Darklang =
             match os with
             | "Linux" -> Stdlib.Result.Result.Ok OS.Linux
             | "Darwin" -> Stdlib.Result.Result.Ok OS.MacOS
-            | "Windows" -> Stdlib.Result.Result.Ok OS.Windows
+            // | "Windows" -> Stdlib.Result.Result.Ok OS.Windows
             | _ -> Stdlib.Result.Result.Error "Unsupported OS"
           else
-            Stdlib.Result.Result.Error os.stderr
+            let os = Stdlib.Cli.execute "echo %OS%"
+
+            if os.exitCode == 0L then
+              match os.stdout |> Stdlib.String.trim with
+              | "Windows_NT" -> Stdlib.Result.Result.Ok OS.Windows
+              | _ -> Stdlib.Result.Result.Error "Unsupported OS"
+            else
+              os
 
 
       module Architecture =
@@ -44,13 +51,27 @@ module Darklang =
             | "armv7l" -> Stdlib.Result.Result.Ok Architecture.Armv7l
             | _ -> Stdlib.Result.Result.Error "Unsupported architecture"
           else
-            Stdlib.Result.Result.Error arch.stderr
+            let arch =
+              Stdlib.Cli.execute
+                "powershell.exe -Command \"$env:PROCESSOR_ARCHITECTURE\""
+
+            if arch.exitCode == 0L then
+              let arch = arch.stdout |> Stdlib.String.trim
+
+              match arch with
+              | "AMD64" -> Stdlib.Result.Result.Ok Architecture.Aarch64
+              | "x86" -> Stdlib.Result.Result.Ok Architecture.X86_64
+              | "ARM64" -> Stdlib.Result.Result.Ok Architecture.Arm64
+              | _ -> Stdlib.Result.Result.Error "Unsupported architecture"
+            else
+              Stdlib.Result.Result.Error arch.stderr
 
 
       module Shell =
         type Shell =
           | Bash
           | Zsh
+          | PowerShell
 
         /// Determines the default shell used by the current user.
         /// Returns  {{Ok <Shell>}} if successful, or {{Error}} with a message if the shell is unsupported or an error occurs.
@@ -60,7 +81,23 @@ module Darklang =
             match Stdlib.String.trim shell with
             | "/bin/bash" -> Stdlib.Result.Result.Ok Shell.Bash
             | "/bin/zsh" -> Stdlib.Result.Result.Ok Shell.Zsh
-            | _ -> Stdlib.Result.Result.Error "Unsupported shell")
+            | _ ->
+              (Stdlib.Cli.executeWithStdOutOrStdErr
+                "powershell.exe -Command \"$PSHOME\"")
+              |> Stdlib.Result.andThen (fun shell ->
+                let shell =
+                  shell
+                  |> Stdlib.String.trim
+                  |> Stdlib.String.split "\\"
+                  |> Stdlib.List.dropLast
+                  |> Stdlib.List.last
+                  |> Builtin.unwrap
+
+                match shell with
+                | "WindowsPowerShell" -> Stdlib.Result.Result.Ok Shell.PowerShell
+                | _ ->
+                  Stdlib.Result.Result.Error
+                    "Unsupported shell, if you are on Windows please use PowerShell"))
 
 
       module Host =

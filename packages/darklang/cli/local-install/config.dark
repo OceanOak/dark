@@ -21,7 +21,7 @@ module Darklang =
 
 
         let updateVersion
-          (configPath: String)
+          (configsPath: String)
           (versionToSet: String)
           : Stdlib.Result.Result<Unit, String> =
           let currentTimestamp =
@@ -30,7 +30,7 @@ module Darklang =
             |> Stdlib.Int64.toString
 
           let config =
-            match read configPath with
+            match read configsPath with
             | Error e -> defaultConfig
             | Ok config -> config
 
@@ -44,7 +44,7 @@ module Darklang =
             |> Builtin.jsonSerialize<Dict<String>>
             |> Stdlib.String.toBytes
 
-          match Builtin.fileWrite serializedConfig configPath with
+          match Builtin.fileWrite serializedConfig configsPath with
           | Ok _ -> Stdlib.Result.Result.Ok()
           | Error err -> Stdlib.Result.Result.Error "Failed to update config.json"
 

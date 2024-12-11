@@ -10,3 +10,14 @@ module Darklang =
           : Stdlib.Result.Result<Unit, String> =
           Stdlib.Cli.executeWithUnitOrStdErr
             $"gunzip -c {inputFilePath} > {outputFilePath}"
+
+
+      module Gzip =
+        let unzipToFile
+          (inputFilePath: String)
+          (outputFilePath: String)
+          : Stdlib.Result.Result<Unit, String> =
+          let decompressCommand =
+            $"""powershell.exe -Command "$inp = [System.IO.File]::OpenRead('{inputFilePath}'); $out = [System.IO.File]::Create('{outputFilePath}'); $gzipStream = New-Object System.IO.Compression.GZipStream($inp, [IO.Compression.CompressionMode]::Decompress); $gzipStream.CopyTo($out); $gzipStream.Close(); $out.Close(); $inp.Close()" """
+
+          Stdlib.Cli.executeWithUnitOrStdErr decompressCommand
