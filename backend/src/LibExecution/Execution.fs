@@ -4,6 +4,8 @@ open System.Threading.Tasks
 open FSharp.Control.Tasks
 
 open Prelude
+open System.Diagnostics
+
 
 module RT = RuntimeTypes
 module RTE = RT.RuntimeError
@@ -73,8 +75,11 @@ let execute
       try
         // TODO: handle secrets and DBs by explicit references instead of relying on symbol table
         // vm.symbolTable <- Interpreter.withGlobals state inputVars
-
+        let swEx = Stopwatch.StartNew()
         let! result = Interpreter.execute exeState vm
+        swEx.Stop()
+        let secondsEx = float swEx.ElapsedMilliseconds / 1000.0
+        debuG "Time elapsed to interpreter execute" secondsEx
         return Ok result
 
       with
@@ -99,7 +104,12 @@ let executeExpr
   (exeState : RT.ExecutionState)
   (instrs : RT.Instructions)
   : Task<RT.ExecutionResult> =
-  execute exeState (None, instrs)
+  let swExE = Stopwatch.StartNew()
+  let result = execute exeState (None, instrs)
+  swExE.Stop()
+  let secondsExE = float swExE.ElapsedMilliseconds / 1000.0
+  debuG "Time elapsed to execute expression" secondsExE
+  result
 
 let executeToplevel
   (exeState : RT.ExecutionState)
@@ -114,6 +124,7 @@ let executeFunction
   (typeArgs : List<RT.TypeReference>)
   (args : NEList<RT.Dval>)
   : Task<RT.ExecutionResult> =
+  let swExF = Stopwatch.StartNew()
   let resultReg, rc = 0, 1
 
   let fnInstr, fnReg, rc =
@@ -139,6 +150,10 @@ let executeFunction
     { registerCount = rc
       instructions = [ fnInstr ] @ argInstrs @ [ applyInstr ]
       resultIn = 0 }
+
+  swExF.Stop()
+  let secondsExF = float swExF.ElapsedMilliseconds / 1000.0
+  debuG "Time elapsed to create function call" secondsExF
   executeExpr exeState instrs
 
 
