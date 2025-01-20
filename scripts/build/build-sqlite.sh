@@ -30,16 +30,17 @@ output_base_dir="app/backend/src/Cli/lib"
 sqlite_sources="sqlite-amalgamation-3460000/sqlite3.c -I sqlite-amalgamation-3460000"
 
 mkdir -p $output_base_dir
+sqlite_compile_flags="-Os -DSQLITE_OMIT_SHARED_CACHE -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_EXPLAIN -DSQLITE_OMIT_DEPRECATED"
 
 # Compile SQLite for different platforms using the function
 parallel ::: \
-  "$HOME/zig/zig cc -fPIC -shared -o $output_base_dir/sqlite3.so $sqlite_sources" \
-  "$HOME/zig/zig cc -target x86_64-linux-gnu -fPIC -shared -o $output_base_dir/sqlite3-linux-x64.so $sqlite_sources" \
-  "$HOME/zig/zig cc -target x86_64-linux-musl -fPIC -shared -o $output_base_dir/sqlite3-linux-musl-x64.so $sqlite_sources" \
-  "$HOME/zig/zig cc -target aarch64-linux-gnu -fPIC -shared -o $output_base_dir/sqlite3-linux-arm64.so $sqlite_sources" \
-  "$HOME/zig/zig cc -target arm-linux-gnueabihf -fPIC -shared -o $output_base_dir/sqlite3-linux-arm.so $sqlite_sources" \
-  "$HOME/zig/zig cc -target x86_64-macos-none -fPIC -shared -o $output_base_dir/sqlite3-macos-x64.dylib $sqlite_sources" \
-  "$HOME/zig/zig cc -target aarch64-macos-none -fPIC -shared -o $output_base_dir/sqlite3-macos-arm64.dylib $sqlite_sources"
+  "$HOME/zig/zig cc -fPIC -shared -o $sqlite_compile_flags $output_base_dir/sqlite3.so $sqlite_sources" \
+  "$HOME/zig/zig cc -target x86_64-linux-gnu $sqlite_compile_flags -fPIC -shared -o $output_base_dir/sqlite3-linux-x64.so $sqlite_sources" \
+  "$HOME/zig/zig cc -target x86_64-linux-musl $sqlite_compile_flags -fPIC -shared -o $output_base_dir/sqlite3-linux-musl-x64.so $sqlite_sources" \
+  "$HOME/zig/zig cc -target aarch64-linux-gnu $sqlite_compile_flags -fPIC -shared -o $output_base_dir/sqlite3-linux-arm64.so $sqlite_sources" \
+  "$HOME/zig/zig cc -target arm-linux-gnueabihf $sqlite_compile_flags -fPIC -shared -o $output_base_dir/sqlite3-linux-arm.so $sqlite_sources" \
+  "$HOME/zig/zig cc -target x86_64-macos-none $sqlite_compile_flags -fPIC -shared -o $output_base_dir/sqlite3-macos-x64.dylib $sqlite_sources" \
+  "$HOME/zig/zig cc -target aarch64-macos-none $sqlite_compile_flags -fPIC -shared -o $output_base_dir/sqlite3-macos-arm64.dylib $sqlite_sources"
 
 # Clean up
 rm -rf sqlite-amalgamation-3460000*
