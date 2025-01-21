@@ -13,6 +13,7 @@ module PT2RT = LibExecution.ProgramTypesToRuntimeTypes
 module Exe = LibExecution.Execution
 module PackageIDs = LibExecution.PackageIDs
 module BuiltinCli = BuiltinCli.Builtin
+module BuiltinCliHostConfig = BuiltinCliHost.Libs.Cli.Config
 
 // ---------------------
 // Version information
@@ -28,41 +29,26 @@ let inDevelopment : bool = false
 
 open System.Reflection
 
-let info () =
-  let buildAttributes =
-    Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyMetadataAttribute>()
-  // This reads values created during the build in Cli.fsproj
-  // It doesn't feel like this is how it's supposed to be used, but it works. But
-  // what if we wanted more than two parameters?
-  let buildDate = buildAttributes.Key
-  let gitHash = buildAttributes.Value
-  { hash = gitHash; buildDate = buildDate; inDevelopment = inDevelopment }
+// let info () =
+//   let buildAttributes =
+//     Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyMetadataAttribute>()
+//   // This reads values created during the build in Cli.fsproj
+//   // It doesn't feel like this is how it's supposed to be used, but it works. But
+//   // what if we wanted more than two parameters?
+//   let buildDate = buildAttributes.Key
+//   let gitHash = buildAttributes.Value
+//   { hash = gitHash; buildDate = buildDate; inDevelopment = inDevelopment }
 
 
 // ---------------------
 // Execution
 // ---------------------
 
-// TODO: de-dupe with _other_ Cli.fs
-let pmBaseUrl =
-  match
-    System.Environment.GetEnvironmentVariable "DARK_CONFIG_PACKAGE_MANAGER_BASE_URL"
-  with
-  | null -> "https://packages.darklang.com"
-  | var -> var
-let packageManagerRT = LibPackageManager.PackageManager.rt pmBaseUrl
-let packageManagerPT = LibPackageManager.PackageManager.pt pmBaseUrl
-
-
 let builtins : RT.Builtins =
   LibExecution.Builtin.combine
-    [ BuiltinExecution.Builtin.builtins
-        BuiltinExecution.Libs.HttpClient.defaultConfig
-        packageManagerPT
-      BuiltinCli.Builtin.builtins
-      BuiltinCliHost.Builtin.builtins ]
+    [ BuiltinCliHostConfig.builtinsToUse
+      LibExecution.Builtin.combine [ BuiltinCliHost.Builtin.builtins ] [] ]
     []
-
 
 
 let state () =
@@ -92,7 +78,7 @@ let state () =
 
   Exe.createState
     builtins
-    packageManagerRT
+    BuiltinCliHostConfig.packageManagerRT
     Exe.noTracing
     sendException
     notify
@@ -124,7 +110,12 @@ let main (args : string[]) =
   try
     initSerializers ()
 
-    packageManagerRT.init.Result
+    try
+      debuG "Starting package manager initialization" ()
+      BuiltinCliHostConfig.packageManagerRT.init.Result
+      debuG "Package manager initialization complete" ()
+    with ex ->
+      debuG "Package manager initialization failed" ex
 
     let result = execute (Array.toList args)
     let result = result.Result

@@ -27,19 +27,20 @@ module Darklang =
       //
       // TODO: support flags as non-last arguments
       // TODO: extract known flags out of this, into some structured data
-      let flags, args = // List<String>, List<String>
-        match Stdlib.List.last args with
-        | Some last ->
-          if Stdlib.String.startsWith "--flags=" last then
-            let flagsValue = Stdlib.String.dropFirst last 7L
-            let flags = Stdlib.String.split flagsValue ","
+      // let flags, args = // List<String>, List<String>
+      //   // idon't think this flag thing is working
+      //   match Stdlib.List.last args with
+      //   | Some last ->
+      //     if Stdlib.String.startsWith "--flags=" last then
+      //       let flagsValue = Stdlib.String.dropFirst last 7L
+      //       let flags = Stdlib.String.split flagsValue ","
 
-            (flags, Stdlib.List.dropLast args)
-          else
-            ([], args)
+      //       (flags, Stdlib.List.dropLast args)
+      //     else
+      //       ([], args)
 
-        // no args
-        | None -> ([], [ "help" ])
+      //   // no args
+      //   | None -> ([], [ "help" ])
 
 
       match args with
@@ -56,6 +57,8 @@ module Darklang =
           Command.RunFunction(fnName, args)
         else
           Command.RunScript(thingToRun, args)
+
+      | [] -> Command.Help
 
       | _ -> Command.Invalid [ "Invalid arguments" ]
 
