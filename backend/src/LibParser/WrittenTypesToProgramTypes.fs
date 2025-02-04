@@ -298,7 +298,17 @@ module Expr =
           Ply.List.mapSequentially
             (fun (case : WT.MatchCase) ->
               uply {
-                let mp = MatchPattern.toPT case.pat
+                let patterns =
+                  match case.pat |> NEList.toList with
+                  | firstPat :: restPats ->
+                    let firstPattern = MatchPattern.toPT firstPat
+                    let restPatterns = List.map MatchPattern.toPT restPats
+                    NEList.ofList firstPattern restPatterns
+                  | [] ->
+                    Exception.raiseInternal
+                      "Invalid MatchCase: empty pattern list"
+                      ["id", id]
+
                 let! whenCondition =
                   uply {
                     match case.whenCondition with
@@ -309,7 +319,9 @@ module Expr =
                   }
                 let! expr = toPT case.rhs
                 let result : PT.MatchCase =
-                  { pat = mp; whenCondition = whenCondition; rhs = expr }
+                  { pat = patterns
+                    whenCondition = whenCondition
+                    rhs = expr }
                 return result
               })
             cases

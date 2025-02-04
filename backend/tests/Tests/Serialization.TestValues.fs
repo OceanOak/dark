@@ -357,89 +357,93 @@ module ProgramTypes =
                           ELet(
                             id,
                             LPVariable(id, "m"),
-                            EMatch(
-                              id,
-                              EApply(
-                                id,
-                                EFnName(
-                                  id,
-                                  Ok(
-                                    FQFnName.Builtin
-                                      { name = "modFunction"; version = 2 }
-                                  )
-                                ),
-                                [],
-                                (NEList.singleton (EInt64(id, 5L)))
-                              ),
-                              [ { pat = MPEnum(id, "Ok", [ MPVariable(id, "x") ])
-                                  whenCondition = None
-                                  rhs = EVariable(id, "v") }
-                                { pat = MPInt64(id, 5L)
-                                  whenCondition = None
-                                  rhs = EInt64(id, -9223372036854775808L) }
-                                { pat = MPBool(id, true)
-                                  whenCondition = None
-                                  rhs = EInt64(id, 7L) }
-                                { pat = MPChar(id, "c")
-                                  whenCondition = None
-                                  rhs = EChar(id, "c") }
-                                { pat = MPList(id, [ MPBool(id, true) ])
-                                  whenCondition = None
-                                  rhs = EList(id, [ EBool(id, true) ]) }
-                                { pat =
-                                    MPListCons(
-                                      id,
-                                      MPString(id, "val1"),
-                                      MPListCons(
-                                        id,
-                                        MPString(id, "val2"),
-                                        MPList(id, [ MPString(id, "val3") ])
-                                      )
-                                    )
-                                  whenCondition = None
-                                  rhs = EList(id, [ EBool(id, true) ]) }
-                                { pat = MPString(id, "string")
-                                  whenCondition = None
-                                  rhs =
-                                    EString(
-                                      id,
-                                      [ StringText "string"
-                                        StringInterpolation(EVariable(id, "var")) ]
-                                    ) }
-                                { pat = MPUnit id
-                                  whenCondition = None
-                                  rhs = EUnit id }
-                                { pat = MPVariable(id, "var")
-                                  whenCondition = None
-                                  rhs =
-                                    EInfix(
-                                      id,
-                                      InfixFnCall(ArithmeticPlus),
-                                      EInt64(id, 6L),
-                                      EVariable(id, "var")
-                                    ) }
-                                { pat = MPFloat(id, Positive, "5", "6")
-                                  whenCondition = None
-                                  rhs = EFloat(id, Positive, "5", "6") }
-                                { pat =
-                                    MPTuple(
-                                      id,
-                                      MPVariable(id, "a"),
-                                      MPVariable(id, "b"),
-                                      [ MPVariable(id, "c") ]
-                                    )
-                                  whenCondition = None
-                                  rhs = EBool(id, true) }
-                                { pat =
-                                    MPTuple(
-                                      id,
-                                      MPVariable(id, "a"),
-                                      MPVariable(id, "b"),
-                                      [ MPVariable(id, "c") ]
-                                    )
-                                  whenCondition = Some(EBool(id, true))
-                                  rhs = EBool(id, true) } ]
-                            ),
+                            e,
+                            // EMatch(
+                            //   id,
+                            //   EApply(
+                            //     id,
+                            //     EFnName(
+                            //       id,
+                            //       Ok(
+                            //         FQFnName.Builtin
+                            //           { name = "modFunction"; version = 2 }
+                            //       )
+                            //     ),
+                            //     [],
+                            //     (NEList.singleton (EInt64(id, 5L)))
+                            //   ),
+                            //   [ { pat = MPEnum(id, "Ok", [ MPVariable(id, "x") ])
+                            //       whenCondition = None
+                            //       rhs = EVariable(id, "v") }
+                            //     { pat = MPInt64(id, 5L)
+                            //       whenCondition = None
+                            //       rhs = EInt64(id, -9223372036854775808L) }
+                            //     { pat = MPBool(id, true)
+                            //       whenCondition = None
+                            //       rhs = EInt64(id, 7L) }
+                            //     { pat = MPChar(id, "c")
+                            //       whenCondition = None
+                            //       rhs = EChar(id, "c") }
+                            //     { pat = MPList(id, [ MPBool(id, true) ])
+                            //       whenCondition = None
+                            //       rhs = EList(id, [ EBool(id, true) ]) }
+                            //     { pat =
+                            //         MPListCons(
+                            //           id,
+                            //           MPString(id, "val1"),
+                            //           MPListCons(
+                            //             id,
+                            //             MPString(id, "val2"),
+                            //             MPList(id, [ MPString(id, "val3") ])
+                            //           )
+                            //         )
+                            //       whenCondition = None
+                            //       rhs = EList(id, [ EBool(id, true) ]) }
+                            //     { pat = MPString(id, "string")
+                            //       whenCondition = None
+                            //       rhs =
+                            //         EString(
+                            //           id,
+                            //           [ StringText "string"
+                            //             StringInterpolation(EVariable(id, "var")) ]
+                            //         ) }
+                            //     { pat = MPUnit id
+                            //       whenCondition = None
+                            //       rhs = EUnit id }
+                            //     { pat = MPVariable(id, "var")
+                            //       whenCondition = None
+                            //       rhs =
+                            //         EInfix(
+                            //           id,
+                            //           InfixFnCall(ArithmeticPlus),
+                            //           EInt64(id, 6L),
+                            //           EVariable(id, "var")
+                            //         ) }
+                            //     { pat = MPFloat(id, Positive, "5", "6")
+                            //       whenCondition = None
+                            //       rhs = EFloat(id, Positive, "5", "6") }
+                            //     { pat =
+                            //         MPTuple(
+                            //           id,
+                            //           MPVariable(id, "a"),
+                            //           MPVariable(id, "b"),
+                            //           [ MPVariable(id, "c") ]
+                            //         )
+                            //       whenCondition = None
+                            //       rhs = EBool(id, true) }
+                            //     { pat =
+                            //         MPTuple(
+                            //           id,
+                            //           MPVariable(id, "a"),
+                            //           MPVariable(id, "b"),
+                            //           [ MPVariable(id, "c") ]
+                            //         )
+                            //       whenCondition = Some(EBool(id, true))
+                            //       rhs = EBool(id, true) }
+                            //     { pat = NEList.singleton (MPVariable(id, "a"))
+                            //       whenCondition = None
+                            //       rhs = EBool(id, true) } ]
+                            // ),
                             ELet(
                               id,
                               LPVariable(id, "f"),

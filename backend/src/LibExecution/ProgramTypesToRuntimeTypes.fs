@@ -647,17 +647,25 @@ module Expr =
       let casesAfterFirstPhase : List<MatchCase.IntermediateValue> =
         cases
         |> List.map (fun c ->
-          let (pat, patSymbols, rcAfterPat) =
-            MatchPattern.toRT Map.empty rcAfterResultIsReserved c.pat
+          let (pats, patSymbols, maxRc) =
+            c.pat
+            |> NEList.fold
+              (fun (pats, allSymbols, maxRc) pat ->
+                let (newPat, patSymbols, patRc) = MatchPattern.toRT Map.empty rc pat
+                // Merge symbols to maintain consistent register assignments
+                let mergedSymbols = Map.mergeFavoringRight allSymbols patSymbols
+                // Take max register count as patterns may need different numbers of registers
+                (pats @ [newPat], mergedSymbols, max maxRc patRc))
+              ([], Map.empty, rcAfterResultIsReserved)
 
           let mergedSymbols = Map.mergeFavoringRight symbols patSymbols
 
           // compile the `when` condition, if it exists, as much as we can
           let rcAfterWhenCond, whenCondInstrs, whenCondJump =
             match c.whenCondition with
-            | None -> (rcAfterPat, [], None)
+            | None -> (maxRc, [], None)
             | Some whenCond ->
-              let whenCond = toRT mergedSymbols rcAfterPat whenCond
+              let whenCond = toRT mergedSymbols maxRc whenCond
               (whenCond.registerCount,
                whenCond.instructions,
                Some(fun jumpBy -> RT.JumpByIfFalse(jumpBy, whenCond.resultIn)))
@@ -668,7 +676,7 @@ module Expr =
           // return the intermediate results, as far along as they are
           { matchValueInstrFn =
               fun jumpByFail ->
-                RT.CheckMatchPatternAndExtractVars(expr.resultIn, pat, jumpByFail)
+                RT.CheckMatchPatternAndExtractVars(expr.resultIn, pats, jumpByFail)
             whenCondInstructions = whenCondInstrs
             whenCondJump = whenCondJump
             rhsInstrs = rhs.instructions @ [ RT.CopyVal(resultReg, rhs.resultIn) ]

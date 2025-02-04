@@ -551,7 +551,9 @@ module ProgramTypes =
         ("whenCondition", Decoders.option (fun ctx -> Expr.decoder ctx))
         ("rhs", (fun ctx -> Expr.decoder ctx))
         (fun pat whenCondition rhs ->
-          { pat = pat; whenCondition = whenCondition; rhs = rhs })
+          { pat = NEList.singleton pat // TODO
+            whenCondition = whenCondition
+            rhs = rhs })
 
 
   module Deprecation =

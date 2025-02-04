@@ -363,7 +363,7 @@ type Instruction =
   | CheckMatchPatternAndExtractVars of
     /// what we're matching against
     valueReg : Register *
-    pat : MatchPattern *
+    pat : List<MatchPattern> *
     /// jump over the current `match` expr's instructions if it doesn't match
     /// (to the next case, or to the "unmatched" instruction)
     failJump : int

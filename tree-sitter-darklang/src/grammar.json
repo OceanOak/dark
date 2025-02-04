@@ -5205,28 +5205,44 @@
         }
       ]
     },
+    "patterns": {
+      "type": "REPEAT1",
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "FIELD",
+            "name": "symbol_pipe",
+            "content": {
+              "type": "ALIAS",
+              "content": {
+                "type": "STRING",
+                "value": "|"
+              },
+              "named": true,
+              "value": "symbol"
+            }
+          },
+          {
+            "type": "FIELD",
+            "name": "pattern",
+            "content": {
+              "type": "SYMBOL",
+              "name": "match_pattern"
+            }
+          }
+        ]
+      }
+    },
     "match_case": {
       "type": "SEQ",
       "members": [
         {
           "type": "FIELD",
-          "name": "symbol_pipe",
-          "content": {
-            "type": "ALIAS",
-            "content": {
-              "type": "STRING",
-              "value": "|"
-            },
-            "named": true,
-            "value": "symbol"
-          }
-        },
-        {
-          "type": "FIELD",
-          "name": "pattern",
+          "name": "patterns",
           "content": {
             "type": "SYMBOL",
-            "name": "match_pattern"
+            "name": "patterns"
           }
         },
         {

@@ -236,8 +236,10 @@ let processItem (item: Item) : Result<Items.Item, Error.ProcessingError> =
         (expression (simple_expression (field_access (variable_identifier) (symbol) (variable_identifier))))
         (keyword)
         (match_case
-          (symbol)
-          (match_pattern (string (symbol) (string_content) (symbol)))
+          (patterns
+            (symbol)
+            (match_pattern (string (symbol) (string_content) (symbol)))
+          )
           (symbol)
           (indent)
           (expression
@@ -246,8 +248,10 @@ let processItem (item: Item) : Result<Items.Item, Error.ProcessingError> =
               (expression (simple_expression (field_access (variable_identifier) (symbol) (variable_identifier))))
               (keyword)
               (match_case
-                (symbol)
-                (match_pattern (list (symbol) (mp_list_content (match_pattern (variable))) (symbol)))
+                (patterns
+                  (symbol)
+                  (match_pattern (list (symbol) (mp_list_content (match_pattern (variable))) (symbol)))
+                )
                 (symbol)
                 (indent)
                 (expression
@@ -259,8 +263,10 @@ let processItem (item: Item) : Result<Items.Item, Error.ProcessingError> =
                 (dedent)
               )
               (match_case
-                (symbol)
-                (match_pattern (variable))
+                (patterns
+                  (symbol)
+                  (match_pattern (variable))
+                )
                 (symbol)
                 (expression
                   (apply
@@ -274,8 +280,10 @@ let processItem (item: Item) : Result<Items.Item, Error.ProcessingError> =
           (dedent)
         )
         (match_case
-          (symbol)
-          (match_pattern (variable))
+          (patterns
+            (symbol)
+            (match_pattern (variable))
+          )
           (symbol)
           (expression
             (apply

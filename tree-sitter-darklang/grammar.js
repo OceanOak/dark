@@ -889,10 +889,16 @@ module.exports = grammar({
         field("keyword_with", alias("with", $.keyword)),
         field("cases", prec.left(repeat1($.match_case))),
       ),
+    patterns: $ =>
+      repeat1(
+        seq(
+          field("symbol_pipe", alias("|", $.symbol)),
+          field("pattern", $.match_pattern),
+        ),
+      ),
     match_case: $ =>
       seq(
-        field("symbol_pipe", alias("|", $.symbol)),
-        field("pattern", $.match_pattern),
+        field("patterns", $.patterns),
         optional(
           seq(
             field("when_keyword", alias("when", $.keyword)),

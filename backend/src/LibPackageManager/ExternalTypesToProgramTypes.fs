@@ -269,7 +269,7 @@ module Expr =
       )
 
   and matchCaseToPT (case : EPT.MatchCase) : PT.MatchCase =
-    { pat = MatchPattern.toPT case.pat
+    { pat = NEList.map MatchPattern.toPT case.pat
       whenCondition = Option.map toPT case.whenCondition
       rhs = toPT case.rhs }
 

@@ -394,7 +394,8 @@ type Expr =
 
   | EStatement of id * first : Expr * next : Expr
 
-and MatchCase = { pat : MatchPattern; whenCondition : Option<Expr>; rhs : Expr }
+and MatchCase =
+  { pat : NEList<MatchPattern>; whenCondition : Option<Expr>; rhs : Expr }
 
 and StringSegment =
   | StringText of string

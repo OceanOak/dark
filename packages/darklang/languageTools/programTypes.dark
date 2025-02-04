@@ -158,7 +158,7 @@ module Darklang =
 
 
       type MatchCase =
-        { pat: MatchPattern
+        { pat: List<MatchPattern>
           whenCondition: Stdlib.Option.Option<Expr>
           rhs: Expr }
 

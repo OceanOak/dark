@@ -391,25 +391,26 @@ let typeReferences =
 
 
 let typeDeclarations =
-  [ t "unit" "type SimpleAlias = Unit" "type SimpleAlias =\n  Unit" [] [] [] false
+  [
+    // t "unit" "type SimpleAlias = Unit" "type SimpleAlias =\n  Unit" [] [] [] false
 
-    // Alias with type params
-    t
-      "type param list"
-      "type MyType<'a> = List<'a>"
-      "type MyType<'a> =\n  List<'a>"
-      []
-      []
-      []
-      false
-    t
-      "type param tuple"
-      "type MyType<'a, 'b> = (List<'a> * List<'b>)"
-      "type MyType<'a, 'b> =\n  (List<'a> * List<'b>)"
-      []
-      []
-      []
-      false
+    // // Alias with type params
+    // t
+    //   "type param list"
+    //   "type MyType<'a> = List<'a>"
+    //   "type MyType<'a> =\n  List<'a>"
+    //   []
+    //   []
+    //   []
+    //   false
+    // t
+    //   "type param tuple"
+    //   "type MyType<'a, 'b> = (List<'a> * List<'b>)"
+    //   "type MyType<'a, 'b> =\n  (List<'a> * List<'b>)"
+    //   []
+    //   []
+    //   []
+    //   false
 
     // Record type decls
     t

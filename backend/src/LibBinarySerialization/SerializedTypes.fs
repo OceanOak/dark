@@ -247,7 +247,7 @@ type Expr =
 
 and [<MessagePack.MessagePackObject>] MatchCase =
   { [<MessagePack.Key 0>]
-    pat : MatchPattern
+    pat : NEList<MatchPattern>
     [<MessagePack.Key 1>]
     whenCondition : Option<Expr>
     [<MessagePack.Key 2>]

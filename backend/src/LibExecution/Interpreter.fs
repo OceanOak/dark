@@ -198,7 +198,19 @@ let rec evalConst
       return raiseRTE threadID (RuntimeError.ParseTimeNameResolution nre)
   }
 
+let checkAndExtractMultiMatchPattern
+  (pats : List<MatchPattern>)
+  (dv : Dval)
+  : bool * List<Register * Dval> =
+  // Try each pattern until one matches
+  let rec tryPatterns patterns =
+    match patterns with
+    | [] -> false, []
+    | pat :: rest ->
+      let matches, vars = checkAndExtractMatchPattern pat dv
+      if matches then true, vars else tryPatterns rest
 
+  tryPatterns pats
 let execute (exeState : ExecutionState) (vm : VMState) : Ply<Dval> =
   uply {
     let raiseRTE rte = raiseRTE vm.threadID rte
@@ -367,9 +379,9 @@ let execute (exeState : ExecutionState) (vm : VMState) : Ply<Dval> =
             )
 
         // -- Match --
-        | CheckMatchPatternAndExtractVars(valueReg, pat, failJump) ->
+        | CheckMatchPatternAndExtractVars(valueReg, pats, failJump) ->
           let doesMatch, registersToAssign =
-            checkAndExtractMatchPattern pat registers[valueReg]
+            checkAndExtractMultiMatchPattern pats registers[valueReg]
 
           if doesMatch then
             registersToAssign

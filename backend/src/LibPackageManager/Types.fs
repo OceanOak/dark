@@ -192,7 +192,7 @@ module ProgramTypes =
     | ERecordUpdate of ID * record : Expr * updates : NEList<string * Expr>
     | EStatement of ID * first : Expr * next : Expr
 
-  and MatchCase = { pat : MatchPattern; whenCondition : Option<Expr>; rhs : Expr }
+  and MatchCase = { pat : NEList<MatchPattern>; whenCondition : Option<Expr>; rhs : Expr }
 
 
   type Deprecation<'name> =

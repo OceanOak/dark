@@ -558,7 +558,21 @@ module Expr =
       let convertCase (clause : SynMatchClause) : WT.MatchCase =
         match clause with
         | SynMatchClause(pat, whenExpr, expr, _, _, _) ->
-          { pat = MatchPattern.fromSynPat pat
+          let patterns =
+            let rec gatherOrPatterns (pat: SynPat) : List<SynPat> =
+              match pat with
+              | SynPat.Or(left, right, _, _) ->
+                  gatherOrPatterns left @ gatherOrPatterns right
+              | pat -> [pat]
+
+            pat
+            |> gatherOrPatterns
+            |> List.map MatchPattern.fromSynPat
+            |> function
+              | first :: rest -> NEList.ofList first rest
+              | [] -> Exception.raiseInternal "Empty pattern in match case" []
+
+          { pat = patterns
             whenCondition = Option.map c whenExpr
             rhs = c expr }
 

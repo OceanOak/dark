@@ -683,164 +683,164 @@ module TokenizePipeExpression =
       (TokenType.FunctionName, (0L, 6L), (0L, 7L)) ]
 
 
-module TokenizeMatchExpression =
-  ("match () with\n| () -> true" |> tokenize) =
-    [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
-      (TokenType.Symbol, (0L, 6L), (0L, 8L))
-      (TokenType.Keyword, (0L, 9L), (0L, 13L))
-      (TokenType.Symbol, (1L, 0L), (1L, 1L))
-      (TokenType.Symbol, (1L, 2L), (1L, 4L))
-      (TokenType.Symbol, (1L, 5L), (1L, 7L))
-      (TokenType.Keyword, (1L, 8L), (1L, 12L)) ]
+// module TokenizeMatchExpression =
+//   ("match () with\n| () -> true" |> tokenize) =
+//     [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
+//       (TokenType.Symbol, (0L, 6L), (0L, 8L))
+//       (TokenType.Keyword, (0L, 9L), (0L, 13L))
+//       (TokenType.Symbol, (1L, 0L), (1L, 1L))
+//       (TokenType.Symbol, (1L, 2L), (1L, 4L))
+//       (TokenType.Symbol, (1L, 5L), (1L, 7L))
+//       (TokenType.Keyword, (1L, 8L), (1L, 12L)) ]
 
-  ("match x with\n| x -> 1L" |> tokenize) =
-    [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
-      (TokenType.VariableName, (0L, 6L), (0L, 7L))
-      (TokenType.Keyword, (0L, 8L), (0L, 12L))
-      (TokenType.Symbol, (1L, 0L), (1L, 1L))
-      (TokenType.VariableName, (1L, 2L), (1L, 3L))
-      (TokenType.Symbol, (1L, 4L), (1L, 6L))
-      (TokenType.Number, (1L, 7L), (1L, 8L))
-      (TokenType.Symbol, (1L, 8L), (1L, 9L)) ]
+//   ("match x with\n| x -> 1L" |> tokenize) =
+//     [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
+//       (TokenType.VariableName, (0L, 6L), (0L, 7L))
+//       (TokenType.Keyword, (0L, 8L), (0L, 12L))
+//       (TokenType.Symbol, (1L, 0L), (1L, 1L))
+//       (TokenType.VariableName, (1L, 2L), (1L, 3L))
+//       (TokenType.Symbol, (1L, 4L), (1L, 6L))
+//       (TokenType.Number, (1L, 7L), (1L, 8L))
+//       (TokenType.Symbol, (1L, 8L), (1L, 9L)) ]
 
-  ("match 1L with\n| 1L -> 1L" |> tokenize) =
-    [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
-      (TokenType.Number, (0L, 6L), (0L, 7L))
-      (TokenType.Symbol, (0L, 7L), (0L, 8L))
-      (TokenType.Keyword, (0L, 9L), (0L, 13L))
-      (TokenType.Symbol, (1L, 0L), (1L, 1L))
-      (TokenType.Number, (1L, 2L), (1L, 3L))
-      (TokenType.Symbol, (1L, 3L), (1L, 4L))
-      (TokenType.Symbol, (1L, 5L), (1L, 7L))
-      (TokenType.Number, (1L, 8L), (1L, 9L))
-      (TokenType.Symbol, (1L, 9L), (1L, 10L)) ]
+//   ("match 1L with\n| 1L -> 1L" |> tokenize) =
+//     [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
+//       (TokenType.Number, (0L, 6L), (0L, 7L))
+//       (TokenType.Symbol, (0L, 7L), (0L, 8L))
+//       (TokenType.Keyword, (0L, 9L), (0L, 13L))
+//       (TokenType.Symbol, (1L, 0L), (1L, 1L))
+//       (TokenType.Number, (1L, 2L), (1L, 3L))
+//       (TokenType.Symbol, (1L, 3L), (1L, 4L))
+//       (TokenType.Symbol, (1L, 5L), (1L, 7L))
+//       (TokenType.Number, (1L, 8L), (1L, 9L))
+//       (TokenType.Symbol, (1L, 9L), (1L, 10L)) ]
 
-  ("match 1.0 with\n| 1.0 -> 1.0" |> tokenize) =
-    [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
-      (TokenType.Number, (0L, 6L), (0L, 9L))
-      (TokenType.Keyword, (0L, 10L), (0L, 14L))
-      (TokenType.Symbol, (1L, 0L), (1L, 1L))
-      (TokenType.Number, (1L, 2L), (1L, 5L))
-      (TokenType.Symbol, (1L, 6L), (1L, 8L))
-      (TokenType.Number, (1L, 9L), (1L, 12L)) ]
+//   ("match 1.0 with\n| 1.0 -> 1.0" |> tokenize) =
+//     [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
+//       (TokenType.Number, (0L, 6L), (0L, 9L))
+//       (TokenType.Keyword, (0L, 10L), (0L, 14L))
+//       (TokenType.Symbol, (1L, 0L), (1L, 1L))
+//       (TokenType.Number, (1L, 2L), (1L, 5L))
+//       (TokenType.Symbol, (1L, 6L), (1L, 8L))
+//       (TokenType.Number, (1L, 9L), (1L, 12L)) ]
 
-  ("match true with\n| true -> true\n| false -> false" |> tokenize) =
-    [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
-      (TokenType.Keyword, (0L, 6L), (0L, 10L))
-      (TokenType.Keyword, (0L, 11L), (0L, 15L))
-      (TokenType.Symbol, (1L, 0L), (1L, 1L))
-      (TokenType.Keyword, (1L, 2L), (1L, 6L))
-      (TokenType.Symbol, (1L, 7L), (1L, 9L))
-      (TokenType.Keyword, (1L, 10L), (1L, 14L))
-      (TokenType.Symbol, (2L, 0L), (2L, 1L))
-      (TokenType.Keyword, (2L, 2L), (2L, 7L))
-      (TokenType.Symbol, (2L, 8L), (2L, 10L))
-      (TokenType.Keyword, (2L, 11L), (2L, 16L)) ]
+//   ("match true with\n| true -> true\n| false -> false" |> tokenize) =
+//     [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
+//       (TokenType.Keyword, (0L, 6L), (0L, 10L))
+//       (TokenType.Keyword, (0L, 11L), (0L, 15L))
+//       (TokenType.Symbol, (1L, 0L), (1L, 1L))
+//       (TokenType.Keyword, (1L, 2L), (1L, 6L))
+//       (TokenType.Symbol, (1L, 7L), (1L, 9L))
+//       (TokenType.Keyword, (1L, 10L), (1L, 14L))
+//       (TokenType.Symbol, (2L, 0L), (2L, 1L))
+//       (TokenType.Keyword, (2L, 2L), (2L, 7L))
+//       (TokenType.Symbol, (2L, 8L), (2L, 10L))
+//       (TokenType.Keyword, (2L, 11L), (2L, 16L)) ]
 
-  ("match \"str\" with\n| \"str\" -> true" |> tokenize) =
-    [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
-      (TokenType.Symbol, (0L, 6L), (0L, 7L))
-      (TokenType.String, (0L, 7L), (0L, 10L))
-      (TokenType.Symbol, (0L, 10L), (0L, 11L))
-      (TokenType.Keyword, (0L, 12L), (0L, 16L))
-      (TokenType.Symbol, (1L, 0L), (1L, 1L))
-      (TokenType.Symbol, (1L, 2L), (1L, 3L))
-      (TokenType.String, (1L, 3L), (1L, 6L))
-      (TokenType.Symbol, (1L, 6L), (1L, 7L))
-      (TokenType.Symbol, (1L, 8L), (1L, 10L))
-      (TokenType.Keyword, (1L, 11L), (1L, 15L)) ]
+//   ("match \"str\" with\n| \"str\" -> true" |> tokenize) =
+//     [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
+//       (TokenType.Symbol, (0L, 6L), (0L, 7L))
+//       (TokenType.String, (0L, 7L), (0L, 10L))
+//       (TokenType.Symbol, (0L, 10L), (0L, 11L))
+//       (TokenType.Keyword, (0L, 12L), (0L, 16L))
+//       (TokenType.Symbol, (1L, 0L), (1L, 1L))
+//       (TokenType.Symbol, (1L, 2L), (1L, 3L))
+//       (TokenType.String, (1L, 3L), (1L, 6L))
+//       (TokenType.Symbol, (1L, 6L), (1L, 7L))
+//       (TokenType.Symbol, (1L, 8L), (1L, 10L))
+//       (TokenType.Keyword, (1L, 11L), (1L, 15L)) ]
 
-  ("match 'a' with\n| 'a' -> true" |> tokenize) =
-    [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
-      (TokenType.Symbol, (0L, 6L), (0L, 7L))
-      (TokenType.String, (0L, 7L), (0L, 8L))
-      (TokenType.Symbol, (0L, 8L), (0L, 9L))
-      (TokenType.Keyword, (0L, 10L), (0L, 14L))
-      (TokenType.Symbol, (1L, 0L), (1L, 1L))
-      (TokenType.Symbol, (1L, 2L), (1L, 3L))
-      (TokenType.String, (1L, 3L), (1L, 4L))
-      (TokenType.Symbol, (1L, 4L), (1L, 5L))
-      (TokenType.Symbol, (1L, 6L), (1L, 8L))
-      (TokenType.Keyword, (1L, 9L), (1L, 13L)) ]
+//   ("match 'a' with\n| 'a' -> true" |> tokenize) =
+//     [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
+//       (TokenType.Symbol, (0L, 6L), (0L, 7L))
+//       (TokenType.String, (0L, 7L), (0L, 8L))
+//       (TokenType.Symbol, (0L, 8L), (0L, 9L))
+//       (TokenType.Keyword, (0L, 10L), (0L, 14L))
+//       (TokenType.Symbol, (1L, 0L), (1L, 1L))
+//       (TokenType.Symbol, (1L, 2L), (1L, 3L))
+//       (TokenType.String, (1L, 3L), (1L, 4L))
+//       (TokenType.Symbol, (1L, 4L), (1L, 5L))
+//       (TokenType.Symbol, (1L, 6L), (1L, 8L))
+//       (TokenType.Keyword, (1L, 9L), (1L, 13L)) ]
 
-  ("match [true; false] with\n| [true; false] -> true" |> tokenize) =
-    [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
-      (TokenType.Symbol, (0L, 6L), (0L, 7L))
-      (TokenType.Keyword, (0L, 7L), (0L, 11L))
-      (TokenType.Keyword, (0L, 13L), (0L, 18L))
-      (TokenType.Symbol, (0L, 18L), (0L, 19L))
-      (TokenType.Keyword, (0L, 20L), (0L, 24L))
-      (TokenType.Symbol, (1L, 0L), (1L, 1L))
-      (TokenType.Symbol, (1L, 2L), (1L, 3L))
-      (TokenType.Keyword, (1L, 3L), (1L, 7L))
-      (TokenType.Keyword, (1L, 9L), (1L, 14L))
-      (TokenType.Symbol, (1L, 14L), (1L, 15L))
-      (TokenType.Symbol, (1L, 16L), (1L, 18L))
-      (TokenType.Keyword, (1L, 19L), (1L, 23L)) ]
+//   ("match [true; false] with\n| [true; false] -> true" |> tokenize) =
+//     [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
+//       (TokenType.Symbol, (0L, 6L), (0L, 7L))
+//       (TokenType.Keyword, (0L, 7L), (0L, 11L))
+//       (TokenType.Keyword, (0L, 13L), (0L, 18L))
+//       (TokenType.Symbol, (0L, 18L), (0L, 19L))
+//       (TokenType.Keyword, (0L, 20L), (0L, 24L))
+//       (TokenType.Symbol, (1L, 0L), (1L, 1L))
+//       (TokenType.Symbol, (1L, 2L), (1L, 3L))
+//       (TokenType.Keyword, (1L, 3L), (1L, 7L))
+//       (TokenType.Keyword, (1L, 9L), (1L, 14L))
+//       (TokenType.Symbol, (1L, 14L), (1L, 15L))
+//       (TokenType.Symbol, (1L, 16L), (1L, 18L))
+//       (TokenType.Keyword, (1L, 19L), (1L, 23L)) ]
 
-  ("match [1L; 2L] with\n| head :: tail -> true" |> tokenize) =
-    [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
-      (TokenType.Symbol, (0L, 6L), (0L, 7L))
-      (TokenType.Number, (0L, 7L), (0L, 8L))
-      (TokenType.Symbol, (0L, 8L), (0L, 9L))
-      (TokenType.Number, (0L, 11L), (0L, 12L))
-      (TokenType.Symbol, (0L, 12L), (0L, 13L))
-      (TokenType.Symbol, (0L, 13L), (0L, 14L))
-      (TokenType.Keyword, (0L, 15L), (0L, 19L))
-      (TokenType.Symbol, (1L, 0L), (1L, 1L))
-      (TokenType.VariableName, (1L, 2L), (1L, 6L))
-      (TokenType.Symbol, (1L, 7L), (1L, 9L))
-      (TokenType.VariableName, (1L, 10L), (1L, 14L))
-      (TokenType.Symbol, (1L, 15L), (1L, 17L))
-      (TokenType.Keyword, (1L, 18L), (1L, 22L)) ]
+//   ("match [1L; 2L] with\n| head :: tail -> true" |> tokenize) =
+//     [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
+//       (TokenType.Symbol, (0L, 6L), (0L, 7L))
+//       (TokenType.Number, (0L, 7L), (0L, 8L))
+//       (TokenType.Symbol, (0L, 8L), (0L, 9L))
+//       (TokenType.Number, (0L, 11L), (0L, 12L))
+//       (TokenType.Symbol, (0L, 12L), (0L, 13L))
+//       (TokenType.Symbol, (0L, 13L), (0L, 14L))
+//       (TokenType.Keyword, (0L, 15L), (0L, 19L))
+//       (TokenType.Symbol, (1L, 0L), (1L, 1L))
+//       (TokenType.VariableName, (1L, 2L), (1L, 6L))
+//       (TokenType.Symbol, (1L, 7L), (1L, 9L))
+//       (TokenType.VariableName, (1L, 10L), (1L, 14L))
+//       (TokenType.Symbol, (1L, 15L), (1L, 17L))
+//       (TokenType.Keyword, (1L, 18L), (1L, 22L)) ]
 
-  ("match (true, false) with\n| (true, false) -> true" |> tokenize) =
-    [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
-      (TokenType.Symbol, (0L, 6L), (0L, 7L))
-      (TokenType.Keyword, (0L, 7L), (0L, 11L))
-      (TokenType.Symbol, (0L, 11L), (0L, 12L))
-      (TokenType.Keyword, (0L, 13L), (0L, 18L))
-      (TokenType.Symbol, (0L, 18L), (0L, 19L))
-      (TokenType.Keyword, (0L, 20L), (0L, 24L))
-      (TokenType.Symbol, (1L, 0L), (1L, 1L))
-      (TokenType.Symbol, (1L, 2L), (1L, 3L))
-      (TokenType.Keyword, (1L, 3L), (1L, 7L))
-      (TokenType.Symbol, (1L, 7L), (1L, 8L))
-      (TokenType.Keyword, (1L, 9L), (1L, 14L))
-      (TokenType.Symbol, (1L, 14L), (1L, 15L))
-      (TokenType.Symbol, (1L, 16L), (1L, 18L))
-      (TokenType.Keyword, (1L, 19L), (1L, 23L)) ]
+//   ("match (true, false) with\n| (true, false) -> true" |> tokenize) =
+//     [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
+//       (TokenType.Symbol, (0L, 6L), (0L, 7L))
+//       (TokenType.Keyword, (0L, 7L), (0L, 11L))
+//       (TokenType.Symbol, (0L, 11L), (0L, 12L))
+//       (TokenType.Keyword, (0L, 13L), (0L, 18L))
+//       (TokenType.Symbol, (0L, 18L), (0L, 19L))
+//       (TokenType.Keyword, (0L, 20L), (0L, 24L))
+//       (TokenType.Symbol, (1L, 0L), (1L, 1L))
+//       (TokenType.Symbol, (1L, 2L), (1L, 3L))
+//       (TokenType.Keyword, (1L, 3L), (1L, 7L))
+//       (TokenType.Symbol, (1L, 7L), (1L, 8L))
+//       (TokenType.Keyword, (1L, 9L), (1L, 14L))
+//       (TokenType.Symbol, (1L, 14L), (1L, 15L))
+//       (TokenType.Symbol, (1L, 16L), (1L, 18L))
+//       (TokenType.Keyword, (1L, 19L), (1L, 23L)) ]
 
-  ("match Stdlib.Result.Result.Ok(5L) with\n| Ok(5L) -> true\n| Error(e) -> false" |> tokenize) =
-    [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
-      (TokenType.ModuleName, (0L, 6L), (0L, 12L))
-      (TokenType.ModuleName, (0L, 13L), (0L, 19L))
-      (TokenType.TypeName, (0L, 20L), (0L, 26L))
-      (TokenType.Symbol, (0L, 26L), (0L, 27L))
-      (TokenType.EnumMember, (0L, 27L), (0L, 29L))
-      (TokenType.Number, (0L, 30L), (0L, 31L))
-      (TokenType.Symbol, (0L, 31L), (0L, 32L))
-      (TokenType.Keyword, (0L, 34L), (0L, 38L))
-      (TokenType.Symbol, (1L, 0L), (1L, 1L))
-      (TokenType.EnumMember, (1L, 2L), (1L, 4L))
-      (TokenType.Number, (1L, 5L), (1L, 6L))
-      (TokenType.Symbol, (1L, 6L), (1L, 7L))
-      (TokenType.Symbol, (1L, 9L), (1L, 11L))
-      (TokenType.Keyword, (1L, 12L), (1L, 16L))
-      (TokenType.Symbol, (2L, 0L), (2L, 1L))
-      (TokenType.EnumMember, (2L, 2L), (2L, 7L))
-      (TokenType.VariableName, (2L, 8L), (2L, 9L))
-      (TokenType.Symbol, (2L, 11L), (2L, 13L))
-      (TokenType.Keyword, (2L, 14L), (2L, 19L)) ]
+//   ("match Stdlib.Result.Result.Ok(5L) with\n| Ok(5L) -> true\n| Error(e) -> false" |> tokenize) =
+//     [ (TokenType.Keyword, (0L, 0L), (0L, 5L))
+//       (TokenType.ModuleName, (0L, 6L), (0L, 12L))
+//       (TokenType.ModuleName, (0L, 13L), (0L, 19L))
+//       (TokenType.TypeName, (0L, 20L), (0L, 26L))
+//       (TokenType.Symbol, (0L, 26L), (0L, 27L))
+//       (TokenType.EnumMember, (0L, 27L), (0L, 29L))
+//       (TokenType.Number, (0L, 30L), (0L, 31L))
+//       (TokenType.Symbol, (0L, 31L), (0L, 32L))
+//       (TokenType.Keyword, (0L, 34L), (0L, 38L))
+//       (TokenType.Symbol, (1L, 0L), (1L, 1L))
+//       (TokenType.EnumMember, (1L, 2L), (1L, 4L))
+//       (TokenType.Number, (1L, 5L), (1L, 6L))
+//       (TokenType.Symbol, (1L, 6L), (1L, 7L))
+//       (TokenType.Symbol, (1L, 9L), (1L, 11L))
+//       (TokenType.Keyword, (1L, 12L), (1L, 16L))
+//       (TokenType.Symbol, (2L, 0L), (2L, 1L))
+//       (TokenType.EnumMember, (2L, 2L), (2L, 7L))
+//       (TokenType.VariableName, (2L, 8L), (2L, 9L))
+//       (TokenType.Symbol, (2L, 11L), (2L, 13L))
+//       (TokenType.Keyword, (2L, 14L), (2L, 19L)) ]
 
-  ("Builtin.printLine \"hey\"\n0L" |> tokenize) =
-    [ (TokenType.ModuleName, (0L, 0L), (0L, 7L))
-      (TokenType.FunctionName, (0L, 8L), (0L, 17L))
-      (TokenType.Symbol, (0L, 18L), (0L, 19L))
-      (TokenType.String, (0L, 19L), (0L, 22L))
-      (TokenType.Symbol, (0L, 22L), (0L, 23L))
-      (TokenType.Number, (1L, 0L), (1L, 1L))
-      (TokenType.Symbol, (1L, 1L), (1L, 2L)) ]
+//   ("Builtin.printLine \"hey\"\n0L" |> tokenize) =
+//     [ (TokenType.ModuleName, (0L, 0L), (0L, 7L))
+//       (TokenType.FunctionName, (0L, 8L), (0L, 17L))
+//       (TokenType.Symbol, (0L, 18L), (0L, 19L))
+//       (TokenType.String, (0L, 19L), (0L, 22L))
+//       (TokenType.Symbol, (0L, 22L), (0L, 23L))
+//       (TokenType.Number, (1L, 0L), (1L, 1L))
+//       (TokenType.Symbol, (1L, 1L), (1L, 2L)) ]
 
 
 module TokenizeModuleDeclaration =

@@ -2275,12 +2275,12 @@
           }
         ]
       },
-      "pattern": {
+      "patterns": {
         "multiple": false,
         "required": true,
         "types": [
           {
-            "type": "match_pattern",
+            "type": "patterns",
             "named": true
           }
         ]
@@ -2296,16 +2296,6 @@
         ]
       },
       "symbol_arrow": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "symbol",
-            "named": true
-          }
-        ]
-      },
-      "symbol_pipe": {
         "multiple": false,
         "required": true,
         "types": [
@@ -2711,6 +2701,32 @@
       },
       "symbol_right_paren": {
         "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "symbol",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "patterns",
+    "named": true,
+    "fields": {
+      "pattern": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "match_pattern",
+            "named": true
+          }
+        ]
+      },
+      "symbol_pipe": {
+        "multiple": true,
         "required": true,
         "types": [
           {

@@ -173,7 +173,7 @@ module Darklang =
           fieldPats: List<MatchPattern>
 
       type MatchCase =
-        { pat: Range * MatchPattern * Range
+        { pat: Range * List<Range * MatchPattern> * Range
           whenCondition: Stdlib.Option.Option<Range * Expr>
           rhs: Expr }
 

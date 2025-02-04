@@ -648,10 +648,27 @@ module Darklang =
         let parseMatchCase
           (node: ParsedNode)
           : Stdlib.Result.Result<WrittenTypes.MatchCase, WrittenTypes.Unparseable> =
-          let pipeSym = findField node "symbol_pipe"
+          // let pipeSym = findField node "symbol_pipe"
 
-          let pattern =
-            findAndParseRequired node "pattern" MatchPattern.parseMatchPattern
+          let patterns =
+            match findField node "patterns" with
+            | Ok patterns ->
+              patterns.children
+              |> Stdlib.List.chunkBySize 2L
+              |> Builtin.unwrap
+              |> Stdlib.List.map (fun patternPipePair ->
+                match patternPipePair with
+                | [ pipeSym; patternNode ] ->
+                  match MatchPattern.parseMatchPattern patternNode with
+                  | Ok pattern -> (pipeSym.range, pattern) |> Stdlib.Result.Result.Ok
+                  | Error _ -> createUnparseableError patternNode
+                | _ -> createUnparseableError patterns)
+
+              |> Stdlib.Result.collect
+
+            | _ -> createUnparseableError node
+
+          // Builtin.debug "patterns" patterns
 
           let arrowSym = findField node "symbol_arrow"
           let rhs = findAndParseRequired node "rhs" Expr.parse
@@ -668,10 +685,10 @@ module Darklang =
               (whenKeyword, guardExpr) |> Stdlib.Option.Option.Some
             | _ -> Stdlib.Option.Option.None
 
-          match pipeSym, pattern, arrowSym, rhs with
-          | Ok pipe, Ok pattern, Ok arrow, Ok rhs ->
+          match patterns, arrowSym, rhs with
+          | Ok patterns, Ok arrow, Ok rhs ->
             (WrittenTypes.MatchCase
-              { pat = (pipe.range, pattern, arrow.range)
+              { pat = (node.range, patterns, arrow.range)
                 whenCondition = guardExpr
                 rhs = rhs })
             |> Stdlib.Result.Result.Ok

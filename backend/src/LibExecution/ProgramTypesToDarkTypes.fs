@@ -733,8 +733,12 @@ module Expr =
         let cases =
           cases
           |> List.map (fun case ->
+            let patterns =
+              case.pat
+              |> NEList.toList
+              |> List.map MatchPattern.toDT
+              |> Dval.list (KTCustomType(matchCaseTypeName, []))
 
-            let pattern = MatchPattern.toDT case.pat
             let whenCondition =
               case.whenCondition |> Option.map toDT |> Dval.option knownType
             let expr = toDT case.rhs
@@ -743,7 +747,7 @@ module Expr =
               matchCaseTypeName,
               [],
               Map
-                [ ("pat", pattern)
+                [ ("pat", patterns)
                   ("whenCondition", whenCondition)
                   ("rhs", expr) ]
             ))
@@ -928,10 +932,13 @@ module Expr =
               | Some(DEnum(_, _, _, "None", [])) -> None
               | _ -> None
             match Map.tryFind "pat" fields, Map.tryFind "rhs" fields with
-            | Some pat, Some rhs ->
-              [ { pat = MatchPattern.fromDT pat
-                  whenCondition = whenCondition
-                  rhs = fromDT rhs } ]
+            | Some(DList(_, pats)), Some rhs ->
+              match pats |> List.map MatchPattern.fromDT with
+              | firstPat :: restPats ->
+                [ { pat = NEList.ofList firstPat restPats
+                    whenCondition = whenCondition
+                    rhs = fromDT rhs } ]
+              | [] -> []
             | _ -> []
           | _ -> [])
       PT.EMatch(uint64 id, fromDT arg, cases)

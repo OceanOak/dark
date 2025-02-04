@@ -187,7 +187,7 @@ type Expr =
 
   | EPlaceHolder // Used to start exprs that aren't filled in yet, not in ProgramTypes
 
-and MatchCase = { pat : MatchPattern; whenCondition : Option<Expr>; rhs : Expr }
+and MatchCase = { pat : NEList<MatchPattern>; whenCondition : Option<Expr>; rhs : Expr }
 
 and StringSegment =
   | StringText of string

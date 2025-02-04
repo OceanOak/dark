@@ -668,7 +668,10 @@ module Darklang =
             let (cases, casesUnresolvedNames) =
               (Stdlib.List.map cases (fun case ->
                 let pat =
-                  MatchPattern.toPT onMissing (Stdlib.Tuple3.second case.pat)
+                  case.pat
+                  |> Stdlib.Tuple3.second
+                  |> Stdlib.List.map (fun casePat ->
+                    MatchPattern.toPT onMissing (Stdlib.Tuple2.second casePat))
 
                 let (whenCondition, whenUnresolvedNames) =
                   match case.whenCondition with

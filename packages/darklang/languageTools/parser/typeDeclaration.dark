@@ -217,7 +217,9 @@ module Darklang =
                   symbolEquals = symbolEquals.range })
               |> Stdlib.Result.Result.Ok
 
-            | _ -> createUnparseableError node
+            | _ ->
+              Builtin.debug "Error parsing type declaration: " ()
+              createUnparseableError node
 
           else
             createUnparseableError node

@@ -624,7 +624,10 @@ module Darklang =
           let cases =
             cases
             |> Stdlib.List.map (fun case ->
-              let patternPart = PrettyPrinter.ProgramTypes.matchPattern case.pat
+              let patternPart =
+                case.pat
+                |> Stdlib.List.map (fun pat -> PrettyPrinter.ProgramTypes.matchPattern pat)
+                |> Stdlib.String.join " | "
 
               let whenPart =
                 match case.whenCondition with

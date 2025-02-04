@@ -396,7 +396,7 @@ module Expr =
         List.map toST fields
       )
   and matchCaseToST (case : PT.MatchCase) : ST.MatchCase =
-    { pat = MatchPattern.toST case.pat
+    { pat = NEList.map MatchPattern.toST case.pat |> NEList.toST
       whenCondition = Option.map toST case.whenCondition
       rhs = toST case.rhs }
 
@@ -502,7 +502,7 @@ module Expr =
       )
 
   and matchCaseToPT (case : ST.MatchCase) : PT.MatchCase =
-    { pat = MatchPattern.toPT case.pat
+    { pat = case.pat |> NEList.toPT |> NEList.map MatchPattern.toPT
       whenCondition = Option.map toPT case.whenCondition
       rhs = toPT case.rhs }
 
