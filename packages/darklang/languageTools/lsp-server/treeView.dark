@@ -63,95 +63,148 @@ module Darklang =
           state
 
 
-        // let getModuleByParts
-        //   (allModules: List<ProgramTypes.Packages.Module>)
-        //   (parts: List<String>)
-        //   : Stdlib.Option.Option<ProgramTypes.Packages.Module> =
-        //   match parts with
-        //   | moduleNameToLookFor :: otherModuleParts ->
-        //     // just use tryFind, since we're looking for a single module
-        //     let found =
-        //       allModules
-        //       |> Stdlib.List.findFirst (fun m -> m.name = moduleNameToLookFor)
+        /// Convert a module path string (e.g. "Darklang.Cli") to a list
+        let parseModulePath (nodeId: String) : List<String> =
+          if nodeId == "Darklang" then ["Darklang"]
+          else nodeId |> Stdlib.String.split "."
 
-        //     match found, otherModuleParts with
-        //     | Some foundModule, [] -> Stdlib.Option.Option.Some foundModule
-        //     | Some foundModule, _ ->
-        //       getModuleByParts foundModule.submodules otherModuleParts
-        //     | None, _ -> Stdlib.Option.Option.None
+        /// Checks if one path is a prefix of another
+        let isPathPrefix (prefix: List<String>) (fullPath: List<String>) : Bool =
+          let prefixLength = Stdlib.List.length prefix
+          let fullPathLength = Stdlib.List.length fullPath
 
+          if prefixLength > fullPathLength then false
+          else Stdlib.List.take fullPath prefixLength == prefix
 
-        /// handles `darklang/getChildNodes` requests
+        /// Builds tree items for submodules that are direct children of the current path
+        let buildSubmoduleTreeItems
+          (allSubmodules: List<List<String>>)
+          (currentPath: List<String>)
+          (nodeId: String)
+          : List<TreeItem> =
+
+          let currentDepth = Stdlib.List.length currentPath
+
+          allSubmodules
+          |> Stdlib.List.head
+          |> Builtin.unwrap
+          |> Stdlib.List.filter (fun modulePath ->
+            (Stdlib.List.length modulePath == currentDepth + 1L) &&
+            isPathPrefix currentPath modulePath)
+          |> Stdlib.List.map (fun modulePath ->
+            match Stdlib.List.last modulePath with
+            | Some lastPart -> lastPart
+            | None -> "")
+          |> Stdlib.List.filter (fun name -> name != "")
+          |> Stdlib.List.unique
+          |> Stdlib.List.map (fun childName ->
+            let childId = $"{nodeId}.{childName}"
+            makeTreeItem childId childName TreeItemCollapsibleState.Collapsed)
+
+        let makeLeaf (id: String) (name: String) : TreeItem =
+          makeTreeItem id name TreeItemCollapsibleState.None
+        /// Builds tree items for fns/types/constants inside a specific module
+        let buildEntityTreeItems
+          (fns: List<ProgramTypes.PackageFn.PackageFn>)
+          (types: List<ProgramTypes.PackageType.PackageType>)
+          (consts: List<ProgramTypes.PackageConstant.PackageConstant>)
+          (currentPath: List<String>)
+          : List<TreeItem> =
+
+          let pathStr =
+            Stdlib.String.join currentPath  "."
+
+          let fnItems =
+            fns
+            |> Stdlib.List.filter (fun fn ->
+              let modules = Stdlib.List.push fn.name.modules fn.name.owner
+              modules == currentPath)
+            |> Stdlib.List.map (fun fn ->
+              let id = fn.name |> ProgramTypes.PackageFn.nameToString
+              makeLeaf id fn.name.name)
+
+          let typeItems =
+            types
+            |> Stdlib.List.filter (fun typ ->
+              let modules = Stdlib.List.push typ.name.modules typ.name.owner
+              modules == currentPath)
+            |> Stdlib.List.map (fun typ ->
+              let id = typ.name |> ProgramTypes.PackageType.nameToString
+              makeLeaf id typ.name.name)
+
+          let constItems =
+            consts
+            |> Stdlib.List.filter (fun c ->
+              let modules = Stdlib.List.push c.name.modules c.name.owner
+              modules == currentPath)
+            |> Stdlib.List.map (fun c ->
+              let id = c.name |> ProgramTypes.PackageConstant.nameToString
+              makeLeaf id c.name.name)
+
+          Stdlib.List.flatten [fnItems; typeItems; constItems]
+
+        /// Main handler: dynamically queries based on node path
         let handleGetChildNodesRequest
           (state: LspState)
           (requestId: JsonRPC.RequestId)
           (nodeId: String)
           : LspState =
-          log "a"
 
-          let (ownerName, moduleNameParts) =
-            match nodeId |> Stdlib.String.split "." with
-            | ownerName :: moduleNameParts -> (ownerName, moduleNameParts)
+          let currentPath = parseModulePath nodeId
 
-          log "bz"
+          let baseQuery =
+            LanguageTools.ProgramTypes.Search.SearchQuery
+              { currentModule = currentPath
+                text = ""
+                searchDepth = LanguageTools.ProgramTypes.Search.SearchDepth.OnlyDirectDescendants
+                entityTypes = [
+                  LanguageTools.ProgramTypes.Search.EntityType.Module
+                  LanguageTools.ProgramTypes.Search.EntityType.Fn
+                  LanguageTools.ProgramTypes.Search.EntityType.Type
+                  LanguageTools.ProgramTypes.Search.EntityType.Constant
+                ] }
 
-          let filteredPackages =
-            ProgramTypes.Packages.filterToModule
-              state.packages
-              ownerName
-              moduleNameParts
-          // ahh but how do I get submodules...?
-          log "c"
+          let baseResults = LanguageTools.PackageManager.Search.search baseQuery
 
-          // let foundModule =
-          //   (getModuleByParts modules moduleNameParts) |> Builtin.unwrap
+          let submoduleNodes =
+            buildSubmoduleTreeItems baseResults.submodules currentPath nodeId
 
-          log "d"
+          // Build items directly under the current path
+          let entityNodesHere =
+            buildEntityTreeItems baseResults.fns baseResults.types baseResults.constants currentPath
+
+          // Now load entities for each child submodule individually
+          let deeperEntities =
+            baseResults.submodules
+            |> Stdlib.List.head
+            |> Builtin.unwrap
+            |> Stdlib.List.filter (fun modulePath ->
+              isPathPrefix currentPath modulePath )
+            |> Stdlib.List.map (fun subPath ->
+              let path = subPath |> Stdlib.List.drop 1L
+              let query =
+                LanguageTools.ProgramTypes.Search.SearchQuery
+                  { currentModule = path
+                    text = ""
+                    searchDepth = LanguageTools.ProgramTypes.Search.SearchDepth.OnlyDirectDescendants
+                    entityTypes = [
+                      LanguageTools.ProgramTypes.Search.EntityType.Module
+                      LanguageTools.ProgramTypes.Search.EntityType.Fn
+                      LanguageTools.ProgramTypes.Search.EntityType.Type
+                      LanguageTools.ProgramTypes.Search.EntityType.Constant
+                    ] }
+              let results = LanguageTools.PackageManager.Search.search query
+              buildEntityTreeItems results.fns results.types results.constants subPath)
+            |> Stdlib.List.flatten
 
           let response =
-            let submoduleNodes =
-              // foundModule.submodules
-              // |> Stdlib.List.map (fun m ->
-              //   let id = $"{nodeId}.{m.name}"
-              //   makeTreeItem id m.name TreeItemCollapsibleState.Collapsed)
-              []
-
-            let typeNodes =
-              // foundModule.types
-              // |> Stdlib.List.map (fun t ->
-              //   let id = $"{nodeId}.{t.name}"
-              //   // TODO: deal with t.name better... pretty-print it
-              //   makeTreeItem id t.name TreeItemCollapsibleState.None)
-              []
-
-            let constantNodes =
-              // foundModule.constants
-              // |> Stdlib.List.map (fun c ->
-              //   let id = $"{nodeId}.{c.name}"
-              //   makeTreeItem id c.name TreeItemCollapsibleState.None)
-              []
-
-            let fnNodes =
-              // foundModule.fns
-              // |> Stdlib.List.map (fun f ->
-              //   let id = $"{nodeId}.{f.name}"
-              //   makeTreeItem id f.name TreeItemCollapsibleState.None)
-              []
-
-            (Stdlib.List.flatten
-              [ submoduleNodes; typeNodes; constantNodes; fnNodes ])
-            |> Stdlib.List.map (fun i -> VSCode.TreeView.TreeItem.toJson i)
+            (Stdlib.List.flatten [submoduleNodes; entityNodesHere])
+            |> Stdlib.List.map VSCode.TreeView.TreeItem.toJson
             |> Json.Array
 
-          log "e"
-
           let responseJson =
-            response
-            |> (fun r ->
-              JsonRPC.Response.Ok.make (Stdlib.Option.Option.Some requestId) r)
+            (JsonRPC.Response.Ok.make (Stdlib.Option.Option.Some requestId) response)
             |> Stdlib.AltJson.format
 
-          log "f"
           logAndSendToClient responseJson
-
           state
