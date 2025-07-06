@@ -1,0 +1,18 @@
+                              Available commands:
+                              
+[38;5;145m  ????      ??????  [0m          [38;5;147mquit     [0m   Exit the CLI
+[38;5;145m????????   ???????? [0m          [38;5;147mmode     [0m   Change the interaction mode (non-interactive, regular, refresh-screen)
+[38;5;145m????????   ???????? [0m          [38;5;147mhelp     [0m   Show help information
+[38;5;145m  ??????    ????????[0m          [38;5;147mversion  [0m   Show CLI version
+[38;5;145m            ????????[0m          [38;5;147mview     [0m   View modules, types, functions, or constants
+[38;5;145m  ????     ???????? [0m          [38;5;147mstatus   [0m   Show system status
+[38;5;145m????????   ???????? [0m          [38;5;147mback     [0m   Go back to the previous page
+[38;5;145m????????   ???????? [0m          [38;5;147minstall  [0m   Install the darklang CLI globally
+[38;5;145m  ??????     ?????? [0m          [38;5;147mupdate   [0m   Update the darklang CLI to the latest version
+[38;5;145m‍                   [0m          [38;5;147muninstall[0m   Uninstall the darklang CLI
+[38;5;145m  ???         ????  [0m          [38;5;147mrun      [0m   Run a function from the package manager or execute a script
+[38;5;145m    ????    ????????[0m          [38;5;147mcd       [0m   Change directory
+[38;5;145m    ????    ????????[0m          [38;5;147mls       [0m   List items in current directory
+[38;5;145m  ???        ??????‍ [0m          
+                              
+                              [48;5;61m  [0m[48;5;134m  [0m[48;5;218m  [0m[48;5;176m  [0m[48;5;38m  [0m[48;5;115m  [0m[48;5;229m  [0m[48;5;180m  [0m[48;5;222m  [0m[48;5;216m  [0m[48;5;223m  [0m

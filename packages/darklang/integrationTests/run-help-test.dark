@@ -1,0 +1,223 @@
+module Darklang =
+  module Cli =
+    module IntegrationTests =
+      module HelpTest =
+
+        // Types for test results
+        type TestResult =
+          | Success of message: String
+          | Failure of message: String
+          | SetupComplete of message: String
+
+        // Colors for output
+        module Colors =
+          let red = "\x1b[0;31m"
+          let green = "\x1b[0;32m"
+          let yellow = "\x1b[1;33m"
+          let blue = "\x1b[0;34m"
+          let reset = "\x1b[0m"
+
+        // Helper functions for colored output
+        let printColored (color: String) (message: String): Unit =
+          Builtin.print $"{color}{message}{Colors.reset}"
+
+        let printlnColored (color: String) (message: String): Unit =
+          Builtin.printLine $"{color}{message}{Colors.reset}"
+
+        // Helper to get paths
+        let getTestDir (): String = "./tests/integration/cli"
+        let getProjectRoot (): String = "."
+        let getExpectedFile (): String = $"{getTestDir()}/expected/help.txt"
+        let getActualFile (): String = $"{getTestDir()}/actual/help.txt"
+
+        // Create necessary directories
+        let createDirectories (): Stdlib.Result.Result<Unit, String> =
+          let testDir = getTestDir()
+          let actualDir = $"{testDir}/actual"
+          let expectedDir = $"{testDir}/expected"
+
+          let result1 = Builtin.cliExecute $"mkdir -p {actualDir}"
+          if result1.exitCode == 0L then
+            let result2 = Builtin.cliExecute $"mkdir -p {expectedDir}"
+            if result2.exitCode == 0L then
+              Stdlib.Result.Result.Ok ()
+            else
+              Stdlib.Result.Result.Error $"Failed to create expected directory: {result2.stderr}"
+          else
+            Stdlib.Result.Result.Error $"Failed to create actual directory: {result1.stderr}"
+
+        // Run the CLI help command and capture output to file
+        let runCliHelpCommand (): Stdlib.Result.Result<Unit, String> =
+          let actualFile = getActualFile()
+          let projectRoot = getProjectRoot()
+
+          // Change to project root and run the CLI command with timeout, redirecting output to file
+          let command = $"cd {projectRoot} && timeout 30s ./scripts/run-cli help > {actualFile} 2>&1"
+
+          let result = Builtin.cliExecute command
+          if result.exitCode == 0L then
+            Stdlib.Result.Result.Ok ()
+          else
+            Error $"CLI command failed with exit code {Stdlib.Int64.toString result.exitCode}: {result.stderr}"
+
+        // Check if file exists and has content
+        let checkFileHasContent (filePath: String): Bool =
+          match Builtin.fileRead filePath with
+          | Ok content -> Stdlib.Bool.not (Stdlib.List.isEmpty content)
+          | Error _ -> false
+
+        // Get file content as string
+        let getFileContent (filePath: String): Stdlib.Result.Result<String, String> =
+          match Builtin.fileRead filePath with
+          | Ok bytes -> Stdlib.Result.Result.Ok (Stdlib.String.fromBytesWithReplacement bytes)
+          | Error e -> Stdlib.Result.Result.Error e
+
+        // Write string content to file
+        let writeFileContent (filePath: String) (content: String): Stdlib.Result.Result<Unit, String> =
+          match Builtin.fileWrite filePath (Stdlib.String.toBytes content) with
+          | Ok _ -> Stdlib.Result.Result.Ok ()
+          | Error e -> Stdlib.Result.Result.Error e
+
+        // Count lines in file
+        let countLinesInFile (filePath: String): Int64 =
+          match getFileContent filePath with
+          | Ok content ->
+            content
+            |> Stdlib.String.split "\n"
+            |> Stdlib.List.length
+          | Error _ -> 0L
+
+        // Copy file
+        let copyFile (source: String) (destination: String): Stdlib.Result.Result<Unit, String> =
+          match getFileContent source with
+          | Ok content -> writeFileContent destination content
+          | Error e -> Error e
+
+        // Check if a file exists
+        let fileExists (filePath: String): Bool =
+          let result = Builtin.cliExecute $"test -f {filePath}"
+          result.exitCode == 0L
+
+        // Compare two files for equality using diff
+        let filesAreEqual (file1: String) (file2: String): Bool =
+          let result = Builtin.cliExecute $"diff -q {file1} {file2}"
+          result.exitCode == 0L
+
+        // Generate diff between two files
+        let generateDiff (expectedFile: String) (actualFile: String): String =
+          let result = Builtin.cliExecute $"diff --unified=3 --color=always {expectedFile} {actualFile}"
+          // diff returns non-zero when files differ, but still provides useful output
+          result.stdout
+
+        // Show preview of file content (first 10 lines)
+        let showFilePreview (filePath: String): Unit =
+          let result = Builtin.cliExecute $"head -10 {filePath}"
+          if result.exitCode == 0L then
+            Builtin.printLine "Preview of captured help output:"
+            Builtin.printLine "================================"
+            Builtin.printLine result.stdout
+            let lineCount = countLinesInFile filePath
+            Builtin.printLine $"... ({Stdlib.Int64.toString lineCount} total lines)"
+          else
+            Builtin.printLine "Could not read file for preview"
+
+        // Delete file if it exists
+        let deleteFile (filePath: String): Unit =
+          let result = Builtin.cliExecute $"rm -f {filePath}"
+          // Ignore errors when deleting (file might not exist)
+          ()
+
+        // Main test function - returns TestResult for internal logic, but main() converts to exit code
+        let runHelpTest (): TestResult =
+          // Print test header
+          printlnColored Colors.blue "🧪 CLI Help Integration Test"
+          Builtin.printLine "============================"
+
+          let expectedFile = getExpectedFile()
+          let actualFile = getActualFile()
+
+          // Create directories
+          match createDirectories() with
+          | Error e ->
+            TestResult.Failure $"Failed to create directories: {e}"
+          | Ok _ ->
+            Builtin.printLine "🔧 Running CLI help command..."
+
+            // Run CLI command
+            match runCliHelpCommand() with
+            | Error e ->
+              printlnColored Colors.red "✗ CLI help command failed"
+              Builtin.printLine "CLI output:"
+
+              // Try to show any captured output
+              match getFileContent actualFile with
+              | Ok content when Stdlib.Bool.not (Stdlib.String.isEmpty content) ->
+                Builtin.printLine content
+              | _ ->
+                Builtin.printLine "No output captured"
+
+              TestResult.Failure $"CLI help command failed: {e}"
+
+            | Ok _ ->
+              printlnColored Colors.green "✓ CLI help command executed successfully"
+
+              // Check if actual file has content
+              if Stdlib.Bool.not (checkFileHasContent actualFile) then
+                printlnColored Colors.red "✗ Output file is empty."
+                TestResult.Failure "Output file is empty"
+              else
+                let lineCount = countLinesInFile actualFile
+                printlnColored Colors.green $"✓ Captured {Stdlib.Int64.toString lineCount} lines of output"
+
+                // Check if expected file exists
+                if Stdlib.Bool.not (fileExists expectedFile) then
+                  // Expected file doesn't exist, create it
+                  printlnColored Colors.yellow $"⚠ Expected output file not found: {expectedFile}"
+                  printlnColored Colors.yellow "ℹ Creating it with current output for future comparisons"
+
+                  match copyFile actualFile expectedFile with
+                  | Ok _ ->
+                    printlnColored Colors.green "✓ Test setup complete. Expected output saved."
+                    Builtin.printLine ""
+                    showFilePreview expectedFile
+                    TestResult.SetupComplete "Expected output file created"
+                  | Error e ->
+                    TestResult.Failure $"Failed to create expected file: {e}"
+                else
+                  // Expected file exists, compare
+                  Builtin.printLine "🔍 Comparing CLI output vs expected..."
+
+                  if filesAreEqual expectedFile actualFile then
+                    printlnColored Colors.green "✅ PASS - Help command output matches expected"
+                    deleteFile actualFile  // Clean up on success
+                    TestResult.Success "Help command output matches expected"
+                  else
+                    printlnColored Colors.red "❌ FAIL - Help command output differs from expected"
+                    Builtin.printLine ""
+                    printlnColored Colors.blue "📊 Detailed diff:"
+                    Builtin.printLine "=================="
+                    printlnColored Colors.yellow "Expected vs Actual:"
+
+                    let diffOutput = generateDiff expectedFile actualFile
+                    Builtin.printLine diffOutput
+
+                    Builtin.printLine ""
+                    printlnColored Colors.yellow "Files:"
+                    Builtin.printLine $"  Expected: {expectedFile}"
+                    Builtin.printLine $"  Actual:   {actualFile}"
+                    Builtin.printLine ""
+                    printlnColored Colors.yellow "💡 Tip: If the new output is correct, update expected with:"
+                    Builtin.printLine $"  cp \"{actualFile}\" \"{expectedFile}\""
+
+                    TestResult.Failure "Help command output differs from expected"
+
+        // Entry point for command execution
+        // FIXED: Now follows the bash logic - setup complete (first run) returns 0, not 1
+        let main (): Int64 =
+          match runHelpTest() with
+          | Success _ -> 0L
+          | SetupComplete _ ->
+            // IMPORTANT: Unlike the bash version that continues to run the test after setup,
+            // we return 0 for setup complete because the next run will do the actual comparison
+            0L
+          | Failure _ -> 1L
