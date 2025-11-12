@@ -1,0 +1,166 @@
+- Prompt
+  - Here's what we had - separate parts like a runtime and parser, without anything to tie them together to form a real 'development experience'
+      - Runtime (backend/src/LibExecution/) - Execution engine with instruction-based VM, type system, and execution state management
+      - Tree-sitter (backend/src/LibTreeSitter/) - Low-level parser providing ParsedNode trees via Builtin.parserParseToSimplifiedTree
+      - Dark Parser (packages/darklang/languageTools/parser/) - Parser written in Darklang itself that takes tree-sitter ParsedNodes and maps them to WrittenTypes structures
+      - - Package Manager (backend/src/LibPackageManager/) - System for resolving types/functions/values
+      -
+  - Here's the work we recently did around ops, and branches and sync and stuff, _towards_ a real development experience
+      -
+          - Operation-based version control (packages/darklang/scm/packageOps.dark) - All changes tracked as immutable operations: AddType, SetTypeName, AddFn, SetFnName, AddValue, SetValueName
+          - Branch system (packages/darklang/scm/branch.dark) - Create, list, and switch branches
+          - Sync protocol (packages/darklang/scm/sync.dark) - HTTP-based push/pull sync: push ops to remote via POST /ops, pull ops via GET /ops, apply with deduplication
+          - HTTP endpoints (canvases/dark-packages/main.dark) - Server endpoints for receiving/sending ops and retrieving entities by location
+          - Package manager resolves names within branch context
+          - LSP integration (packages/darklang/languageTools/lsp.dark and lsp-server/) - Language server for IDE support
+      - On the topic of branches... we want to support both on-main package editing and the ability to keep some in-progress work on a branch
+      - Ethos: remove all the accidental complexity in writing code. Directly affect the tree structure of package namspaces, immediately.
+      - Here is the PR description
+           ---
+            - Description:
+                - Major refactor to package management, source control, and dev UX throughout CLI and VS Code environments.
+                - Concepts and major themes
+                    - Changes to the Darklang "Matter" (the types+vals+fns in the package manager) are now Synced between Instances,
+                    - Branches
+                    - Package Ops
+                    - package 'locations' are now separated from the package items
+                        - PackageFn.Name, PackageType.Name, PackageValue.Name removed
+                        - PackageLocation added
+                    - Package search improved/adjusted a bit
+                        - LocatedItem
+                - SQL
+                    - package tables
+                    - locations
+                    - instances
+                    - sync-tracking
+                    - dropped "_v0" from table names
+                - CLI
+                    - improved interactive nav
+                    - interactive search
+                    - tracks/shows relevant branch
+                    - able to define types, vals, and fns wholly via the CLI
+                    -
+                - VS Code
+                    - extension is _much_ further along
+                - LSP / dev server
+                    -
+                - Parsing and Pretty-Printing
+                    - now consider branchId and addl context
+                    - F#-based parser now (finally) supports `pm.findFn someArg` -- directly __using__ a lambda/fn field of a record for an `EAapply`
+                    - Name Resolution (in both F# and (TODO) darklang source) now simplified given DB restructure and Locations being separated from Items.
+                - Builtins
+                    - major tidying of where builtins live
+                    -
+                    - BuiltinPM created to house anything that touches the `data.db` sqlite DB
+                        - package item fetching, lookups, querying (migrated from BuiltinExecution)
+                        - managing package ops
+                        - managing instances
+                        - managing branches
+                        - managing sync
+                        -
+                        - adding ops
+                        - (future) merging branches
+                        - etc.
+                        - managing 'scripts' (migrated from `BuiltinCliHost`)
+                        - builtins related to package-fetching now here,
+                        -
+                    -
+                        - `Builtin.terminalX` fns moved from `BuiltinCliHost` to `BuiltinCli`
+                    - `Builtin.stdinReadKey` now does a better job of ... TODO
+                        - filtering out control characters and null from the keyChar field, returning only printable characters?
+                        - TODO should prob. be an Option<String> not just String
+                    - `Builtin.pmStats` works again (has been returning static `(0,0,0)` recently)
+                        - TODO not actually perfect though, because branches and unmerged stuff...
+                - Serialization
+                    - BinarySerializer updated to handle PackageLocation, PackageOp
+                    - tidied common dval-construction and -deconstruction
+                        - especially related to Options and Results
+                - Misc. unrelated work completed:
+                    - CLI
+                        - Interactive serach
+                    - in Dockerfile, zig-related env var is now correctly set
+                - Next steps -- aiming to finish by the 9th
+                    - explore AI workflows to changing the package manager, both in and off of branches
+                        - yield package ops
+                    - get rid of all the .dark files
+                    - LSP to interactive as server for both CLI and vs code -- multiple clients, in different branches, etc. server need to be refactored majorly to handle this
+                    - _streaming_ (not just _syncing_) of package ops
+                - Later
+                    - replace all this PT2DT type nonsense with something like a darklang type provider
+        ---
+
+      - CLI stuff - Interactive commands for package management
+          - Navigation: `nav` (navigate to packages/modules), `ls` (list contents), `view` (view details), `tree` (hierarchy), `back` (previous), `search`
+          - Creation: `val`/`let` (create value), `fn` (create function), `type` (create type)
+          - Source Control: `branch` (manage branches), `instance` (manage remote instances), `sync` (push/pull ops)
+          - Execution: `run` (execute function), `eval` (evaluate expression), `scripts` (manage scripts)
+      - VS Code stuff - File-based editing with LSP integration
+          - Virtual file system (`darkfs:/`) for viewing/editing packages directly as .dark files
+          - TreeView showing package hierarchy with owners/modules/names
+          - Can open and edit package definitions directly (function/type/value definitions)
+          - LSP provides real-time syntax checking, semantic tokens, and language features
+          - Branch management UI (create, switch, view branches via quick-picker)
+          - Sync commands to push/pull ops to remote instances
+          - Workspace view showing package ops history with filtering (by date, location, branch)
+  - And here are the gaps:
+      - Approval/permissioning system - currently everything syncs without any ownership checks
+      - Multi-instance coordination - handling WIP when branches are merged elsewhere
+      - Namespace ownership - who can edit what, and how to propose changes to others' namespaces
+      - Content vs naming approval - separating approval of content from approval of names/locations
+      - Happy path preservation - approvals must not interrupt smooth workflow for owned namespaces
+      - Stuff that syncs shouldn't disturb someone's environment/instance until they Approve of it.
+          - sometimes yourself on another machine
+          - sometimes yourlelf on another branch
+          - sometimes yourself in the web editor
+          - sometimes someone else on your team
+          - sometimes someone else random
+      - The syncing and approval processes need to account for this
+      - What happens if you do work on a branch on one of your machines, and then merge it. Would it be 'auto-merged' on other machines? (q for both sync and async scenarios)
+          - even though it's been merged by Instance A, there might have been WIP on Instance B that could be useful.
+          - kinda feels like we do need the Branch concept, but Branch+Instance needs to ..idk be known in some special way
+          - like maybe when you pull changes from above, we record not only what instance it came from, but also in what branch?
+          - then when I review local "merge/approval reqeusts" or whatever
+      - BUT if I do a simple git push + git pull, I want it to just work. so the happy path needs to stay SUPER smooth for such a case. (no interrupting)
+      - doing this all with the help of AI
+          - flows in VS Code and CLI
+  - Here's the next big idea:
+      - extend that 'remove accidental complexity' stuff while supporting the equivalent of PR reviews. As is, so far, everything just writes and syncs without any sort of permissioning. This can lead to accounts contributing to namespaces they don't have permission to, and users on the same team having no way to decide whose version of some function "gets merged" for use long term. We need to thoroughly think though how we .. deal with this.
+  - related: accounts and access/permissions
+      - (somewhere we have notes around this - find)
+      - need to reintroduce these types, tables, etc.
+      - (TODO fill in a bit)
+  - Big question for us to figure out: how/when are "namings" requested and approved?
+      - e.g. I, account "Stachu" use some functionality in the Stripe namespace. I notice some issue with a function, or want to add a new function, and edit it locally. I use it in my codebase. I want to 'offer it up' for use by other users/accounts. _Somehow_ I need a flow of 'suggesting' that name (likely in a group of recommendations/reviews akin to a PR review) and later the upstream/owning account will 'approve' of all/some/none of those recommendations. Such that all users know "these are fns in 'our' namespace that we have approved of'.
+      - Before the approvals happen, I (and others, if they try hard enough) should be able to access these fns.
+          - Maybe they're forced to be in some non-stripe namespace. or maybe the 'naming' simply has a flag of 'unapproved' or something.
+  - I'm not sure how much this relates to branches. I suspect some naming suggestions will _come out of_ branch merges, or relate to the timing of a branch being merged. I also think that it'd be weird to suggest renames that haven't yet been merged from a branch. Since that's clearly in-progress work.
+  - At the same time,
+  - ... hm maybe we're conflating "PR Review" with some other step.
+  - Code review =
+      - reviewing new types, vals, functions, tests, etc.
+          - the _data_ of the types/vals/fns doesn't need approval unless referenced by a name we're trying to 'request approval of'. Let's say I iterate on a fn for a while and we had many versions of that fn prior to the 'final' thing.
+  - some code thoughts...
+      - Maybe PackageOps should be expanded? Maybe the 'naming' parts of it should be split out? Maybe we need a separate ApprovalOp type thing?
+      - we likely need some CLI commands
+      - we need some VS Code UI
+  - What I'd like you to do is:
+      - process these notes
+      - review ProgramTypes
+      - review the CLI source (TODO) and _imagine_ the current/intended dev UX
+      - review the VS Code source (TODO) and _imagine_ the current/intended dev UX
+      - think: as a developer, how would you want the dev UX to expand to handle 'approvals'
+      - create some artifacts:
+          - sketch some ProgramTypes.fs changes -- what are the core things we need at program-time and in the runtime to support this?
+          - sketch some SQL changes
+          - sketch some LibPM changes
+              - what's needed to ensure that: everyone is able to find _any_ package code immediately, but (1) only 'approved' stuff is visible to most folks by default, (2)....
+          - sketch some CLI changes
+          - sketch some VS Code changes
+          - (sketch those in separate .md files in a new `approvals` dir? or inline, and ignore if code compiles)
+  - tangential, later
+      - we need _some_ way to 'go back' to some old version of a fn. Let's say I've been iterating on some fn for a while. I liked the version I had at the start of today and want to 'revert' to that point. It's pretty common for someone to look through git history to review old iterations of code for similar reasons.
+      - Later: GC
+          - Eventually we can decide to GC anything not referenced. No need to approve it or anything.
+          - (that GC process should be explicit - ask the user if they're OK w/ stuff getting deleted, and provide context of the fact that it's been superseded, etc.)
+          - (_maybe_ the timing of GC relates to branch merges)
+          - (honestly we can wait on all of this GC stuff - only when we're itching for disk space or whatever)

@@ -1,0 +1,253 @@
+# Multiple Competing Requests - Overview
+
+## The Problem
+When multiple people propose changes to the same location (e.g., `Stripe.charge`), the namespace owner needs to:
+- See all competing proposals
+- Compare different approaches
+- Choose one, multiple, or none
+- Handle what happens to rejected alternatives
+
+## When This Happens
+
+### Scenario 1: Same Name, Different Content
+1. Alice proposes: `SetFnName(location=Stripe.charge, item_id=abc123)`
+2. John proposes: `SetFnName(location=Stripe.charge, item_id=def456)`
+3. Both want to define `Stripe.charge` with different implementations
+4. Owner must choose between them (or reject both)
+
+### Scenario 2: Different Names, Related Functionality
+1. Alice proposes: `SetFnName(location=Stripe.charge, item_id=abc123)`
+2. John proposes: `SetFnName(location=Stripe.createCharge, item_id=def456)`
+3. Different names but same intent
+4. Owner might want one, both, or neither
+
+### Scenario 3: Sequential Proposals
+1. Alice submits approval request Monday
+2. Owner hasn't reviewed yet
+3. John submits different approval request Wednesday
+4. Owner reviews Friday, sees both
+
+### Scenario 4: Competing Updates
+1. `Stripe.charge` currently points to `item_id=old123`
+2. Alice proposes update to `item_id=abc123`
+3. John proposes update to `item_id=def456`
+4. Both improving same existing function
+
+## How Owner Reviews Competing Requests
+
+### UI/Display Options
+
+**Option A: Show All Requests for Location**
+When reviewing `Stripe.charge`:
+- List all pending requests affecting this location
+- Show side-by-side diff of all proposals
+- Allow choosing one or combining ideas
+
+**Option B: Review Requests Independently**
+- Each approval request reviewed separately
+- Owner may not realize they're competing
+- Last approved wins (might be confusing)
+
+**Option C: Detect and Group Conflicts**
+- System detects conflicting requests
+- Groups them together: "3 competing proposals for Stripe.charge"
+- Forces owner to resolve as a group
+
+### Decision Actions
+
+Owner can:
+1. **Approve one, reject others** - Clear winner
+2. **Approve multiple with different names** - Ask Alice/John to rename
+3. **Reject all** - None are good enough
+4. **Request changes** - Ask for modifications before approving
+5. **Merge manually** - Combine ideas into new version, approve that
+
+## What Happens to Rejected Alternatives?
+
+### Option A: Delete/Archive
+- Rejected requests are marked as rejected
+- Content (item_id) still exists but unnamed
+- Proposer can access by hash but not by name
+- Essentially discarded
+
+### Option B: Keep as Alternatives
+- Rejected proposals stored as "alternative implementations"
+- Accessible via: `Stripe.charge.alternatives` or similar
+- Users can browse and potentially use alternatives
+- More discoverable but clutters namespace
+
+### Option C: Suggest Different Namespace
+- Owner rejects `Stripe.charge` but suggests `Alice.Stripe.charge`
+- Proposer's version lives in their namespace
+- Still usable but clearly not "official"
+- Preserves work while maintaining clarity
+
+### Option D: Counter-Proposal
+- Owner rejects but creates counter-proposal
+- "I like your idea but here's a better implementation"
+- Original proposer can accept/reject counter-proposal
+- Collaborative iteration
+
+## Conflict Detection
+
+When does system flag competing requests?
+
+### Strict: Exact Location Match
+- Only flag if same location: `Stripe.charge` vs `Stripe.charge`
+- Different names are independent: `Stripe.charge` vs `Stripe.createCharge`
+- Simple but might miss related proposals
+
+### Loose: Similar Names
+- Flag similar names: `Stripe.charge` and `Stripe.chargeCustomer`
+- Use fuzzy matching or edit distance
+- Helps owner see related proposals
+- More false positives
+
+### Semantic: Same Functionality
+- Analyze what functions do (types, parameters)
+- Flag semantically similar proposals
+- Most helpful but complex to implement
+- Future enhancement
+
+## Timing and Order
+
+### First-Come-First-Served?
+- Should first proposal get priority?
+- Or all proposals treated equally?
+- Time-based ordering vs quality-based
+
+### Can Proposer Update Their Request?
+- Alice submits proposal Monday
+- Sees John's better proposal Wednesday
+- Can Alice withdraw or update hers?
+- Avoids wasting owner's time on obsolete proposals
+
+### Auto-Reject on Conflict?
+- If request A approved, automatically reject conflicting request B?
+- Or keep B pending in case A needs to be reverted?
+- Balance between clarity and flexibility
+
+## Notifications
+
+### To Proposers
+When competing request exists:
+- Notify Alice: "Someone else proposed changes to Stripe.charge"
+- Show John's proposal to Alice (if allowed)
+- Let Alice withdraw/update if desired
+
+### To Owner
+- Notification: "2 competing proposals for Stripe.charge"
+- Summary of differences
+- Recommendation (if possible): "Proposal B is more complete"
+
+## User Experience Scenarios
+
+### Scenario A: Clear Winner
+1. Owner reviews both proposals
+2. One is clearly better
+3. Approves winner, rejects other with reason: "Proposal B already approved"
+4. Both proposers notified
+5. Clean resolution
+
+### Scenario B: Both Good, Different Approaches
+1. Owner likes both
+2. Approves both with different names:
+   - Alice's → `Stripe.charge` (prefer this approach)
+   - John's → `Stripe.chargeWithRetry` (alternative)
+3. Both proposers happy
+4. More options for users
+
+### Scenario C: Neither Good Enough
+1. Owner rejects both
+2. Provides feedback on what's needed
+3. Alice and John can iterate and resubmit
+4. Or owner implements own version
+
+### Scenario D: Merge Ideas
+1. Owner sees good ideas in both
+2. Creates new version combining both approaches
+3. Rejects both original proposals
+4. Credits Alice and John in commit message
+5. Approves own merged version
+
+## Proposer Collaboration
+
+Can Alice and John collaborate before owner reviews?
+
+### Option A: Independent Proposals
+- Each proposal is isolated
+- No collaboration mechanism
+- Simple but potentially wasteful
+
+### Option B: Link Proposals
+- Alice can say "this supersedes my earlier proposal"
+- John can say "this builds on Alice's proposal"
+- Helps owner understand relationships
+
+### Option C: Shared Draft
+- Alice and John co-author single proposal
+- Both credited when approved
+- Requires collaboration tools (comments, shared editing)
+
+## Key Questions to Decide
+
+1. How does owner discover competing requests - automatic grouping or manual?
+2. Should proposers be notified of competing proposals?
+3. Can proposers see each other's proposals before approval?
+4. What happens to rejected proposals - delete, archive, or keep as alternatives?
+5. Can proposers withdraw or update their requests?
+6. Should system auto-reject conflicting requests after one is approved?
+7. How to handle sequential conflicts (approve A, then B conflicts, then C)?
+8. Should there be a time limit on pending requests?
+9. Can owner approve with modifications (edit the proposal)?
+10. How to credit multiple contributors if ideas are merged?
+
+## Edge Cases
+
+### Proposal for Already-Changed Location
+1. Alice proposes change to `Stripe.charge` (currently points to `old123`)
+2. Before approval, owner directly updates to `new456`
+3. Alice's proposal now conflicts with owner's own change
+4. Auto-reject Alice's proposal? Or let owner review anyway?
+
+### Circular Dependencies in Proposals
+1. Alice's proposal references John's proposed function
+2. John's proposal references Alice's proposed function
+3. Both need approval but depend on each other
+4. Approve both atomically? Or detect and reject?
+
+### Competing Delete Operations
+1. Alice proposes: `DeleteFn(Stripe.charge)`
+2. John proposes: `SetFnName(Stripe.charge, new_implementation)`
+3. One wants to delete, one wants to update
+4. Fundamentally different intents
+5. How to present this choice to owner?
+
+## Implementation Plan
+
+### Database Changes
+- Track competing requests: link requests affecting same location
+- Add `replaces_request_id` field for superseding proposals
+- Add `related_requests` table for grouping
+- Track rejection reasons
+
+### Backend (F#)
+- Detect competing requests when new request submitted
+- Group requests by location for review UI
+- Add endpoint: `GET /approval-requests/competing/:location`
+- Add endpoint: `POST /approval-requests/:id/supersede` to replace own request
+- Handle approval of one request while rejecting others atomically
+
+### CLI
+- Show competing requests when listing: "Stripe.charge (3 competing proposals)"
+- `darklang approval-requests show <id> --with-competing` to see alternatives
+- `darklang approval-requests withdraw <id>` to retract proposal
+- `darklang approval-requests supersede <old-id> <new-id>` to replace
+
+### VSCode Extension
+- In approval request TreeView, indicate competing requests with icon
+- Side-by-side diff view for comparing proposals
+- Notification: "Someone else proposed changes to this location"
+- Allow proposer to view competing proposals (if permitted)
+- Allow proposer to withdraw their request
+- Owner review UI shows all competing proposals together

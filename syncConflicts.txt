@@ -1,0 +1,103 @@
+# Sync Conflicts - Overview
+
+## The Problem
+When syncing (pulling changes from server), local changes may conflict with server changes.
+This happens when:
+- Multiple users edit the same location
+- User edits offline, then syncs and server has different changes
+- User works on multiple machines with overlapping edits
+
+## Core Principle: Never Block Sync
+
+**Syncing never blocks.** Conflicts are detected and tracked, but sync always proceeds.
+Developers can continue working with conflicts present.
+
+**Conflicts only need to be resolved when merging the branch.**
+That's when resolution is required.
+
+## When Conflicts Are Detected
+
+During sync, conflicts occur when:
+- Local has changes to location X
+- Server has newer version of location X (different item_id/hash)
+- Both changes exist since branch diverged
+
+The sync proceeds anyway:
+- Server changes are pulled
+- Local changes are preserved
+- Conflict is recorded for later resolution
+- Developer is notified but not blocked
+
+## Conflict Resolution Timing
+
+### During Sync (Detection Only)
+- Conflicts detected and tracked
+- Notification shown: "3 conflicts detected in Foo.bar, Baz.qux"
+- Developer can continue working
+- No action required immediately
+
+### During Merge (Resolution Required)
+- When developer tries to merge branch, must resolve all conflicts first
+- Merge command shows all conflicts with diff view
+- Developer chooses resolution for each conflict
+- Only after all conflicts resolved can merge proceed
+
+## Resolution Options (At Merge Time)
+
+For each conflict, developer chooses:
+1. **Keep branch version** - use local changes
+2. **Keep main version** - discard local changes
+3. **Manual merge** - edit to combine both
+4. **Skip this item** - don't merge this particular change
+
+## What Gets Synced?
+
+When syncing, what changes are pulled from server?
+
+### Option A: All Approved Ops
+- Pull all ops with status='approved' regardless of namespace
+- Keeps entire platform in sync
+
+### Option B: Only Owned Namespaces
+- Only pull ops for namespaces user owns
+- Other namespace changes pulled on-demand
+
+### Option C: Owned + Referenced
+- Pull owned namespaces fully
+- Pull other namespaces only if referenced in code
+
+## Key Questions to Decide
+1. What gets synced - all approved ops, or just owned/referenced namespaces?
+2. How do we notify developers about conflicts without blocking them?
+3. Should we show conflicts in the UI continuously or just at merge time?
+4. Can developers view/review conflicts before merge, or only during merge?
+5. Should conflicts expire if server changes again before merge?
+6. What if both sides of conflict are in namespaces user doesn't own?
+
+## Implementation Plan
+
+### Database Changes
+- Track conflicts: which ops conflict between branch and main
+- Store conflict metadata: detected_at, locations, item_ids involved
+- Conflicts may need updating as server changes or local changes continue
+
+### Backend (F#)
+- Detect conflicts during sync but don't block
+- Return conflict information in sync response
+- Store conflicts for later resolution
+- At merge time, present all conflicts for resolution
+- Validate all conflicts resolved before allowing merge
+
+### CLI
+- `darklang pull` always succeeds, shows conflict notifications
+- `darklang conflicts list` to view current conflicts
+- `darklang branch merge` requires resolving conflicts first
+- Interactive conflict resolution during merge
+
+### VSCode Extension
+- Auto-sync continues even with conflicts
+- Show notification: "3 conflicts detected" but don't block
+- Status bar indicator for pending conflicts
+- Show conflicts in tree view or problems panel
+- During merge, provide UI for conflict resolution with diff view
+- Block merge button until conflicts resolved

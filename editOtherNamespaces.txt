@@ -1,0 +1,53 @@
+# Editing Other Namespaces - Overview
+
+## The Problem
+When a user wants to edit code in a namespace they don't own (e.g., editing `Stripe.charge` when they don't own the `Stripe` namespace),
+ we need approval from the namespace owner.
+
+## The Basic Flow
+1. User edits something in a namespace they don't own
+2. Changes are saved locally - user can iterate and test freely
+3. At some point, an approval request needs to be created for the namespace owner
+4. Owner reviews and approves/rejects
+5. If approved, changes become visible to everyone
+
+## Two Options for When to Create Approval Requests
+
+### Option A: On Save
+- When user saves changes to an unowned namespace, those ops are added to a "pending approval" list
+- User can continue editing and saving - all remain in the pending list
+- User explicitly submits the pending changes for approval when ready
+
+
+### Option B: On Merge/Push
+- User saves changes locally as usual
+- When merging or pushing, automatically detect ops that aren't in user's own namespace
+- Automatically create approval requests for those changes
+
+
+
+## Implementation Plan
+
+### Database Changes
+- Add `approval_requests` table to track approval requests
+- Add `status` column to `package_ops` (values: 'approved', 'pending', 'waiting_approval', 'rejected')
+- Link ops to approval requests
+
+### Backend (F#)
+- **Option A**: Check namespace ownership on save, mark ops as pending if unowned
+- **Option B**: Check namespace ownership on push, create approval requests for unowned namespace ops
+- Add approval request module for create/list/approve/reject operations
+- Update name resolution to respect op status (only show 'approved' ops to everyone, 'pending' ops to creator)
+- Add API endpoints for approval workflow
+
+### CLI
+- **Option A**: Add command to submit pending ops for approval (if checking on save)
+- **Option B**: Push command auto-creates approval requests for unowned namespace ops (if checking on push)
+- Add commands to list/view/approve/reject approval requests
+- Add command to view your own pending/submitted approval requests
+
+### VSCode Extension
+- Update save behavior to show status indicators for pending changes
+- Add TreeView for managing approval requests (incoming/outgoing/pending)
+- Add UI for submitting pending changes for approval
+- Add notifications for incoming approval requests

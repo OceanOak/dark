@@ -1,0 +1,296 @@
+Currently:
+- Packages can be edited directly by anyone
+- No way to request/approve changes to packages you don't own
+- No way for teams to review changes before they get applied
+- No merge mechanism for Branches
+
+
+Goals:
+1. Support PR-like reviews for package changes
+2. Allow suggesting changes to packages you don't own
+3. Keep the happy path (git push/pull) smooth and non-interrupting
+4. Handle sync between different instances/branches/accounts gracefully
+5. Distinguish "approved" vs "unapproved" package items
+6. Enable teams to collaborate with proper permissions
+7. Design branch merge workflow
+
+
+Scenarios:
+1. User edits a function in someone else's namespace (e.g., Stripe.charge)
+   → Need approval from namespace owner
+
+2. User on Machine 1 merges Branch X, User on Machine 2 still has Branch X checked out with WIP
+   → Need to handle "branch merged elsewhere" state gracefully
+
+3. Team member proposes changes that need review before merging to main
+   → Need approval request workflow
+
+4. Two users merge conflicting changes to same location
+   → Need conflict detection/resolution
+
+
+---
+Core Concepts:
+- Content (the actual code/definition) is immutable, content-addressed by hash
+- Namings (locations/names pointing to content) are what get approved
+Example:
+```
+AddFn(id=abc123, body=..., params=...)     -- Content, immutable
+SetFnName(id=abc123, location=Stripe.charge)  -- Naming, needs approval
+```
+
+
+
+---
+Name Resolution Timing
+
+Show hash when not using latest
+- If code references Stripe.charge but it's referencing an old hash
+- Display: `Stripe.charge@abc123`
+- Makes it visible that you're not on the latest version
+- Clicking can show "Update available" prompt
+- or maybe bring back versions? (names include version: Stripe.charge.v1, Stripe.charge.v2)
+
+When you type `Stripe.charge`, the parser/name resolver:
+1. Looks up "Stripe.charge" in locations table
+2. Finds item_id (the content hash)
+3. Stores that UUID in the AST
+4. That UUID never changes unless you re-save the code
+
+So the answer to "what happens to 100 users using old version":
+→ NOTHING! They keep using the old version because their code references the old hash.
+
+Breaking change notifications:
+  - When Stripe.charge changes, notify all users who reference it
+  - Show diff, breaking changes
+  - Let users decide when to upgrade
+
+Question:
+Should we allow users to use older versions explicitly?
+E.g., `Stripe.charge@abc123` to pin to a specific version
+
+
+
+
+---
+
+Approval States:
+- APPROVED:
+  - Visible by default to all users
+  - Can be used without any special flags
+  - This is what name resolution picks up by default
+
+- PENDING_APPROVAL: Suggested but not yet approved
+  - Created when someone edits a namespace they don't own
+  - Created when merging branches (optional workflow)
+  - Visible to the suggester and namespace owner
+  - NOT picked up by default name resolution
+
+- DRAFT: Work in progress on a branch
+  - Only visible in that branch context
+  - May or may not need approval when merged
+
+- SUPERSEDED: Old version that's been replaced
+  - Still accessible for history/rollback
+  - Not shown in default searches
+  - Existing code can still reference old hashes directly
+
+
+---
+An "approval request" is a collection of PackageOps that are proposed together,
+similar to a PR. It contains:
+- Set of naming operations (SetTypeName, SetFnName, SetValueName)
+- Metadata: who proposed it, when, why, from which branch
+- Review comments/discussion (future)
+
+
+
+
+---
+
+BRANCH MERGE
+
+A branch merge means:
+1. Take all PackageOps that exist on branch X (via branch_id = X)
+2. Re-apply them with branch_id = NULL (or target branch) (copy to preserve history)
+3. Update branch metadata to mark it as merged
+
+questions:
+- What happens to conflicting ops (same location modified on branch and main)?
+- Should merge be "all or nothing" or allow partial merges?
+- Should merged ops keep their original timestamps or get new ones?
+
+
+
+Conflict Detection
+
+Conflicts occur when:
+- Branch has SetFnName(location=Foo.bar, id=abc)
+- Main has SetFnName(location=Foo.bar, id=def)
+- Both added since branch diverged
+
+-> Prompt user, show diff, let them choose.
+
+
+When merging a branch:
+1. Collect all ops from branch
+2. Group by namespace ownership
+3. For each namespace:
+   - If user owns: auto-approve and merge
+   - If user doesn't own: create ApprovalRequest
+
+  type ApprovalRequest =
+    { id: Uuid
+      title: String
+      description: String
+      proposedBy: AccountID
+      proposedAt: DateTime
+      targetNamespace: String
+      ops: List<PackageOp>
+      status: ApprovalRequestStatus
+      reviewedBy: Option<AccountID>
+      reviewedAt: Option<DateTime>
+      sourceInstanceID: Option<Uuid>
+      sourceBranchID: Option<BranchID>
+      comments: List<ApprovalComment> }
+
+
+
+---
+External Namespace Edit
+
+1. dev navigates to Stripe.charge in VS Code
+2. Edits the function
+3. On save, system detects user doesn't own Stripe namespace
+4. Instead of applying directly, creates ApprovalRequest
+5. dev fill in title/description, submits for review
+6. Namespace owner gets notified, reviews changes
+7. Owner approves/rejects changes
+8. function location now points to new content if approved
+9. everyone else continues using old version until they update
+
+
+---
+Branch Merge with Mixed Ownership
+1. dev `branch merge feature-auth`
+2. System collects all ops from feature-auth branch
+    - 5 ops affecting MyCompany.* (dev owns)
+    - 2 ops affecting Darklang.Stdlib.* (dev doesn't own)
+
+3. System prompts dev:
+   - do you wanna merge all or nothing?
+   - no :
+      4. System auto-applies 5 MyCompany ops
+      5. System creates ApprovalRequest for 2 Darklang.Stdlib ops
+    - yes :
+      4. System creates ApprovalRequest for 2 Darklang.Stdlib ops
+      5. Wait for owner to approve
+      6. merge all after approval
+
+
+
+---
+Multi-Machine Branch Workflow
+
+dev works on branch 'experiment' on two machines, then merges
+1. dev on Machine 1: creates branch, makes changes, merges to main
+2. Machine 1: branch shows as merged
+3. dev on Machine 2: still on 'experiment' branch with local WIP
+4. Machine 2 syncs, detects branch was merged elsewhere
+5. VS Code shows notification:
+   ```
+   Branch 'experiment' was merged on another machine.
+   You have 3 local pending changes.
+
+   [Review changes] [Switch to main] [Keep working]
+   ```
+6. dev clicks "Review changes"
+7. Shows diff of their local WIP vs merged state
+8. Options:
+   - Discard local changes (switch to main)
+   - Move local changes to new branch
+
+
+
+---
+when we sync
+-  are we only syncing our own namespace changes?
+-  or are we syncing all changes including others' namespaces (Darklang, any any other namespaces we're using)?
+
+
+
+---
+EDITING SCENARIOS
+
+1. I edit code in MY namespace (Stachu.*)
+   → Save immediately, no approval needed
+
+2. I edit code in SOMEONE ELSE's namespace (Stripe.*)
+   → Save locally, create approval request, owner reviews
+
+3. I edit BUILTIN code (Darklang.Stdlib.*)
+   → Needs approval from Darklang account
+
+4. Owner approves my request
+   → Name binding created, I get notified
+
+5. Owner rejects my request
+   → Request marked rejected, I get notified with reason
+
+6. I cancel my own pending request
+   → Request cancelled, owner notified
+
+7. Multiple people request SAME name
+   → Owner sees multiple requests, chooses one or none
+
+8. Request approved but conflicts with existing approved name
+    → Shouldn't happen, need conflict detection
+
+MULTI-INSTANCE SCENARIOS
+
+9. I work on Machine A and Machine B (same account)
+    - Machine A: edit and merge Stachu.foo
+    - Machine B: has WIP on Stachu.foo
+    // check above
+
+10. I work on Machine A and Machine B (different namespaces)
+    - Machine A: edit Stachu.foo
+    - Machine B: edit Stachu.bar
+    → Sync, Both auto-merge, no conflict
+
+11. I edit code offline, teammate does too
+    → On sync, need conflict detection
+
+
+
+BRANCH + APPROVAL SCENARIOS
+
+12. I create branch, edit MY namespace, merge
+    → Works immediately, no approval
+
+16. I create branch, edit OTHERS' namespace, merge
+    → Creates approval requests, waits for owner
+    (maybe before merge we create the approval requests?)
+
+
+---
+misc
+should be able to use my own pending (unapproved) changes locally? (yes, should work)
+I request approval offline → queued, sends when online
+
+- Darklang account (owner), stachu makes changes and merges, I make changes and merge how do we know which ops are whose?
+  - should we update code from our accounts then request approval from darklang account?
+
+Merge dry-run: "show me what would happen"
+Merge rollback: "undo this merge"
+Cherry-pick: "merge just this one op from branch"
+
+Request branch review from a friend (not owner) share a link to a branch or something
+1. dev creates branch, makes changes
+2. dev requests review from teammate
+3. Teammate reviews, leaves comments
+
+
+
+---
+conflicts when syncing

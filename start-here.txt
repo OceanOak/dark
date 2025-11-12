@@ -1,0 +1,288 @@
+# Overview
+
+1. Accounts and Permissions
+How to Detect Mine vs Other People's Namespaces
+
+Package ownership: Each package has an `owner` field indicating which account owns it.
+- Check: Does package.owner == current_account?
+- If yes: ops are auto-approved, no approval needed
+- If no: ops marked as pending, approval request created
+
+---
+
+## 2. Editing Code
+
+### On Main - Editing My Own Namespace
+
+Happy path: Edit, save, sync - everything auto-approved.
+- Save creates PackageOps locally with status='approved'
+- Auto-push syncs to server
+- No approval workflow, no interruptions
+- See happyPath.txt:6-33 for complete workflow
+
+### On Main - Editing Both My Own and Others' Namespaces
+
+Mixed ownership: Some changes approved immediately, others need approval.
+- Your namespace ops: marked 'approved', synced immediately
+- Other namespace ops: marked 'pending', approval request created
+- See editOtherNamespaces.txt:1-54 for approval flow options
+- Push command shows which ops were approved vs pending - see implementation.txt:111-117
+
+What if your code depends on pending changes?
+- Locally: You can use your own pending changes (name resolution includes your pending ops)
+- Your approved code can reference pending content by hash (content exists, just naming is pending)
+- Others can't see/use your pending changes until approved
+- Result: Your code works for you, but others can't use it until dependencies are approved
+- See nameResolution.txt:76-82 for visibility rules
+
+### On a Branch - Editing My Own
+
+Branch isolation: All changes stay on branch until merged.
+- Saves create PackageOps with branch_id set
+- Changes only visible on that branch
+- Still auto-approved (you own namespace)
+- Merge to main when ready - see branchMerging.txt:1-125
+- See happyPath.txt:59-89 for branch workflow
+
+### On a Branch - Editing Others
+
+Branch + approval needed: Branch work is local, approval happens on push
+- Edit and save on branch creates ops with branch_id
+- Namespace ownership NOT checked during local merge
+- Ownership checked when pushing to server
+- Unowned namespace ops create approval requests
+- See branchMerging.txt:51-66 for when approval requests are created
+- See overview.txt:174-190 for mixed ownership merge flow
+
+### Editing on Same Branch on Different Machines
+
+When both online: Branch ops sync across machines smoothly.
+- Machine A: creates ops with branch_id='feature-x', pushes to server
+- Machine B: pulls ops where branch_id='feature-x'
+- Both machines stay in sync automatically
+- See happyPath.txt:113-138 for online multi-machine workflow
+
+When both offline: Work continues, sync when back online.
+- Machine A: edits `Foo.bar` offline, creates ops locally, queued for sync
+- Machine B: edits `Baz.qux` offline (different location), creates ops locally, queued for sync
+- Both go online: both push their ops to server
+- No conflicts (different locations) - both sets of ops merge smoothly
+- See offlineOperations.txt:198-215 for offline collaboration
+
+When both edit same location offline:
+- Machine A: edits `Foo.bar` offline → creates SetFnName(Foo.bar, id=abc)
+- Machine B: edits `Foo.bar` offline → creates SetFnName(Foo.bar, id=def)
+- Both go online and sync:
+  - Both push their conflicting ops
+  - Conflicts detected during sync
+  - Conflicts queued for resolution (never blocks sync)
+  - Must resolve before merging branch
+- See syncConflicts.txt:1-101 for conflict handling
+- See offlineOperations.txt:198-215 for shared offline work
+
+---
+
+## 3. Merging
+
+### Merge Branch - Only Changes in My Own Namespace
+
+Simple merge: All changes auto-approved, merge proceeds smoothly.
+- Collect all branch ops
+- All ops in owned namespaces
+- Move ops from branch to main (set branch_id=NULL)
+   Re-apply them with branch_id = NULL (or target branch) (copy to preserve history)
+
+   Note: We just UPDATE branch_id=NULL on existing ops - preserves all history (created_at, creator, content).
+   To track which branch ops came from (for reverting), we can:
+   - Add `merged_from_branch_id` field to package_ops (set once when merging)
+   - Query: "show me all ops that were merged from branch 'feature-x'"
+   - Allows: "revert all changes from branch 'feature-x'" by filtering on this field
+   - Alternative: Use branches.merged_at timestamp to correlate ops created between branch creation and merge time
+
+- Push to server - all ops marked 'approved'
+- No approval requests needed
+- See branchMerging.txt:1-14 for basic flow
+- See happyPath.txt:230-255 for parallel work without conflicts
+
+### Merge Branch - Changes in Both My Own and Other Namespaces
+
+Partial auto-approval: Owned namespace ops merge immediately, others create approval requests.
+- System groups ops by namespace ownership
+- Option A: Merge owned ops now, create approval requests for rest
+- Option B: Wait for all approvals before merging anything
+- See overview.txt:174-190 for mixed ownership merge options
+- See branchMerging.txt:51-66 for approval request timing
+
+### Merging on Machine A While Having WIP on Machine B
+
+Branch merged elsewhere: Machine B detects branch was merged, handles WIP gracefully.
+- Machine A: merges branch, branch marked as merged (merged_at set)
+- Machine B: still on same branch with uncommitted changes
+- Machine B syncs: detects branch.merged_at is newer than last sync
+- Machine B gets notification: "Branch merged elsewhere. You have N WIP changes"
+- Options: Review changes, Switch to main, Move WIP to new branch
+- See branchMergedElsewhere.txt:1-73 for complete handling
+- See overview.txt:193-213 for multi-machine branch workflow
+
+---
+
+## 4. Syncing
+
+### Syncing Main - No Conflicting Changes
+
+Simple sync: Pull + Push, everything merges smoothly.
+- Pull: Fetch approved ops from server where branch_id=NULL
+- Push: Send local ops to server
+- No conflicts: different locations or same locations, same content
+- All ops marked approved (for owned namespaces)
+- See happyPath.txt:12-18 for auto-sync behavior
+- See branchSyncing.txt:8-14 for what ops get synced
+
+### Syncing a Branch - No Conflicting Changes
+
+Branch sync: Sync branch ops, optionally main ops too.
+- Pull: Fetch ops where branch_id='current-branch'
+- Question: Do we also pull main ops (branch_id=NULL)?
+  - Option A: Branch ops only (isolated)
+  - Option B: Branch + main ops (stay current)
+  - Option C: Auto-pull main in background
+  - Option D: Manual main sync
+- See branchSyncing.txt:16-41 for sync strategy options
+- Push: Send local branch ops
+- No conflicts: changes in different locations
+
+### Syncing Main - Conflicting Changes
+
+Conflict detection: Conflicts detected but sync never blocks.
+- Pull detects: local has SetFnName(Foo.bar, id=abc), server has SetFnName(Foo.bar, id=def)
+- Sync proceeds anyway: both changes preserved
+- Conflict recorded for later resolution
+- Notification shown: "3 conflicts detected"
+- Resolution required at merge time, not during sync
+- See syncConflicts.txt:1-101 for conflict handling philosophy
+- See syncConflicts.txt:15-27 for detection and non-blocking approach
+
+### Syncing a Branch - Conflicting Changes
+
+Branch conflicts queued: Same as main - detected but not blocking.
+- Pull finds conflicts between branch ops and server ops
+- Both versions preserved locally
+- Conflicts tracked in merge_conflicts table
+- Developer can continue working
+- Must resolve before merging branch
+- See syncConflicts.txt:30-48 for resolution timing
+- See branchMerging.txt:38-50 for conflict resolution options
+
+### Syncing Branch on Machine A - What Happens on Machine B
+
+Branch state syncs: Both machines see same branch ops.
+- Machine A: creates and pushes ops with branch_id='feature-x'
+- Machine B: pulls ops where branch_id='feature-x'
+- Both machines have same branch state after sync
+- Special case: Branch merged on A while B has WIP
+  - See branchMergedElsewhere.txt:1-73
+- See happyPath.txt:113-138 for multi-machine sync
+
+### Are We Pulling and Pushing at Same Time While Syncing?
+
+Sequential operations: Pull first, then push.
+- `darklang sync` = `darklang pull` then `darklang push`
+- Pull gets latest server state
+- Push sends local changes
+- Not truly simultaneous - sequential within one sync operation
+- See implementation.txt:81-92 for sync behavior
+- See branchSyncing.txt:8-14 for sync definition
+
+### When Syncing - What Happens to Changes in Other Namespaces?
+
+Depends on sync strategy: Multiple options for what gets synced.
+- Question at overview.txt:216-218: "are we syncing all changes or only our own namespace?"
+
+Options:
+- Option A: All approved ops regardless of namespace
+  - Pull all approved changes from any namespace
+  - Keeps entire platform in sync
+  - See syncConflicts.txt:56-65
+
+- Option B: Only owned namespaces
+  - Only sync namespaces you own
+  - Other changes pulled on-demand
+
+- Option C: Owned + referenced namespaces
+  - Sync owned namespaces fully
+  - Also sync namespaces your code references
+  - Most practical approach
+
+For pending/unapproved ops in other namespaces:
+- Only sync ops where status='approved' OR (status='pending' AND created_by=you)
+- Other people's pending changes stay invisible
+- See branchSyncing.txt:42-60 for approval status filtering
+
+During push:
+- Your owned namespace ops → marked 'approved'
+- Other namespace ops → marked 'pending', approval requests created
+- See implementation.txt:54-62 for push/save behavior
+
+---
+
+## Key Concepts Summary
+
+### Content vs Naming (Name Resolution)
+- Content (functions, types) is immutable and hash-addressed
+- Namings (locations like Stripe.charge) point to content and need approval
+- When you reference Stripe.charge, name is resolved to hash at save time
+- Hash stored in AST - code keeps working even if name updates
+- See nameResolution.txt:1-321 for complete explanation
+- See overview.txt:33-73 for content/naming split
+
+### Approval States
+- APPROVED: Visible by default, can be used without flags
+- PENDING_APPROVAL: Suggested but not approved, only visible to creator and owner
+- DRAFT: Work in progress on branch
+- SUPERSEDED: Old version replaced
+- See overview.txt:77-97 for state definitions
+
+### Branch Operations
+- Branches isolate work using branch_id on PackageOps
+- Merge moves ops from branch to main (changes branch_id)
+- Merge is local operation, push checks ownership
+- See branchMerging.txt:1-125 for merge mechanics
+
+### Offline Support
+- All operations queue locally when offline
+- Sync when back online
+- Never lose work
+- See offlineOperations.txt:1-357 for complete offline handling
+
+### Peer Review (Optional)
+- Informal review separate from namespace owner approval
+- Share branch for feedback before submitting
+- See peerReview.txt:1-339 for peer review workflow
+
+### Competing Requests
+- Multiple people can propose changes to same location
+- Owner sees all proposals and chooses
+- See multipleCompetingRequests.txt:1-254 for handling
+
+---
+
+## Implementation Phases
+
+The system is built in 3 simplified phases:
+1. Basic ownership checks - implementation.txt:123-128
+2. Approval requests - implementation.txt:130-134
+3. Branch merged elsewhere - implementation.txt:136-140
+
+See implementation.txt for complete simplified implementation plan including database schema, backend logic, CLI commands, and VSCode extension changes.
+
+---
+
+## Decisions Made (Simplified Approach)
+
+Key decisions in the simplified implementation:
+- **When to check ownership**: On save (implementation.txt:56) - immediate feedback
+- **What gets synced**: Approved locations + your own pending (implementation.txt:83-85)
+- **Ownership check**: Simple `location.owner == current_account` (implementation.txt:20)
+- **Name resolution**: Show approved OR your own pending (implementation.txt:72-74)
+
+The simplified approach defers complex features (offline sync, conflict resolution, competing requests) to future phases if needed.

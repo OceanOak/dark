@@ -1,0 +1,92 @@
+# Branch Syncing - Overview
+
+## The Problem
+- What ops get pushed/pulled?
+- Do we sync main changes too, or only branch ops?
+
+## What Is Syncing?
+
+**Syncing = Push/Pull PackageOps**
+
+When you sync branch 'feature-x':
+1. **Push**: Send local ops where `branch_id = 'feature-x'` that server doesn't have yet
+2. **Pull**: Receive ops where `branch_id = 'feature-x'` from server that you don't have
+
+
+## Questions:
+
+1. Do We Sync Main Ops Too?
+
+When on branch 'feature-x', what ops get pulled?
+
+### Option A: Branch Ops Only
+- Pull only ops with `branch_id = 'feature-x'`
+- Branch is completely isolated from main
+- In this case, branch gets out of sync with main, conflicts only discovered at merge time
+
+### Option B: Branch + Main Ops
+- Pull ops with `branch_id = 'feature-x'` AND `branch_id = NULL` (main)
+- Branch stays current with main automatically
+- In this case, main changes might disrupt branch work
+
+### Option C: Auto-Pull Main in Background
+- Explicitly sync branch ops
+- Main ops pulled automatically/periodically in background
+- Show notification when main has changes relevant to branch
+
+### Option D: Manual Main Sync
+- Only sync branch ops by default
+- Add explicit command: `darklang pull main` to update main while on branch
+- Dev controls when to incorporate main changes
+
+
+3. Syncing Approved vs Pending Ops
+
+When syncing a branch, what approval statuses get synced?
+
+### For Owned Namespaces
+- All ops sync normally regardless of approval status
+- Developer owns namespace so all changes are "approved"
+
+### For Unowned Namespaces
+**Option A: Only Sync User's Own Pending Ops**
+- Pull only ops with status='approved' OR (status='pending' AND created_by=you)
+- Other people's pending ops stay invisible
+
+**Option B: Sync All Branch Ops**
+- Pull all ops on the branch, regardless of status
+- See everyone's pending changes on this branch
+- I don't think this is a good idea
+
+
+
+## Implementation Plan
+
+### Database Changes
+- Ops already have `branch_id`
+- Consider adding `instance_id` to track which machine created op
+- Track last sync timestamp per instance+branch combination
+- Store sync state to detect merged branches
+
+### Backend (F#)
+- Sync endpoint filters ops by branch_id
+- Optional: also include main ops (branch_id=NULL) based on strategy chosen
+- Detect if branch is merged when syncing
+- Return sync summary: X ops pushed, Y ops pulled
+- Push endpoint checks namespace ownership for each op
+- Ops in owned namespaces marked as 'approved'
+- Ops in unowned namespaces marked as 'pending', create approval requests
+
+### CLI
+- `darklang pull` - pull branch ops (and main?)
+- `darklang push` - push branch ops
+- `darklang sync` - pull then push
+- `darklang pull main` - explicitly pull main changes while on branch (Option D)
+- `darklang sync --preview` - show what would change
+
+### VSCode Extension
+- Auto-sync in background (configurable)
+- Show sync status in status bar
+- Notification when branch merged elsewhere
+- Show sync progress/summary
+- Option to disable auto-sync and make manual

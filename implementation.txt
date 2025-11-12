@@ -1,0 +1,193 @@
+# Implementation Plan - Simplified
+
+## Core Problem
+1. Anyone can edit any package → need ownership checks
+2. Editing someone else's package → needs approval
+3. Branch merged elsewhere while you have WIP → handle gracefully
+
+## Database Schema Changes
+
+### Extend Existing Tables
+
+**`locations` table** - Add approval status
+```sql
+ALTER TABLE locations
+  ADD COLUMN status TEXT NOT NULL DEFAULT 'approved'; -- 'approved', 'pending', 'rejected'
+
+CREATE INDEX idx_locations_status ON locations(status);
+```
+
+Note: `locations` already has `owner` field. Ownership check: `location.owner == current_account`
+
+**`branches` table** - Track merge state (may already have merged_at)
+```sql
+ALTER TABLE branches
+  ADD COLUMN merged_at TIMESTAMP NULL,
+  ADD COLUMN merged_by TEXT NULL;
+```
+
+### New Tables
+
+**`approval_requests`** - Track approval requests
+```sql
+CREATE TABLE approval_requests (
+  id TEXT PRIMARY KEY,
+  created_by TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  status TEXT NOT NULL, -- 'pending', 'approved', 'rejected'
+  reviewed_by TEXT NULL,
+  reviewed_at TIMESTAMP NULL
+);
+```
+
+**`approval_request_locations`** - Which locations are in each request
+```sql
+CREATE TABLE approval_request_locations (
+  approval_request_id TEXT NOT NULL REFERENCES approval_requests(id),
+  location_id TEXT NOT NULL REFERENCES locations(location_id),
+  PRIMARY KEY (approval_request_id, location_id)
+);
+```
+
+## Backend Changes
+
+### When saving a location (SetTypeName/SetFnName/SetValueName)
+
+1. Check if `location.owner == current_account`
+2. If **yes**: set `status = 'approved'`, save normally
+3. If **no**:
+   - Set `status = 'pending'`
+   - Save locally only (not synced yet)
+   - Location grouped with other pending changes for same owner
+
+### Creating approval requests (submit or push)
+
+**Example: You edit Stripe.charge and Stripe.refund**
+
+1. Save both locally → marked `status = 'pending'`
+2. Run `darklang push` (or `darklang approvals submit`)
+3. System finds pending locations: `Stripe.charge`, `Stripe.refund`
+4. Groups by owner: both owned by "Stripe" account
+5. Creates one `approval_request`:
+   - `created_by = 'YourAccount'`
+   - `status = 'pending'`
+6. Links both locations to this request in `approval_request_locations`
+7. Syncs everything to server
+
+**How Stripe account sees your request:**
+
+1. Stripe owner runs `darklang approvals incoming`
+2. CLI queries:
+   - `approval_requests` WHERE owner of target locations = 'Stripe'
+   - Joins `approval_request_locations` to get location IDs
+   - Fetches location definitions from `locations` table (with `item_id` pointing to actual content)
+3. Shows: "YourAccount wants to change 2 locations"
+4. Views each location with its new definition:
+   - `Stripe.charge` → see the new function body (via `item_id`)
+   - `Stripe.refund` → see the new function body (via `item_id`)
+5. Runs `darklang approvals approve <request-id>`
+6. All locations updated to `status = 'approved'` in `locations` table
+7. Now everyone can see and use your changes
+
+### When approving a request
+
+1. Check if `current_account == location.owner` for all locations in request
+2. If yes: Update all locations to `status = 'approved'`
+3. Mark approval_request as approved
+
+### Name resolution (when looking up a location)
+
+Return locations where:
+- `status = 'approved'` OR
+- `status = 'pending' AND created_by = current_account`
+
+This means:
+- Everyone sees approved locations
+- You see your own pending locations
+- Others don't see your pending locations
+
+### Sync: When pulling
+
+Pull locations where:
+- `branch_id = current_branch` (or NULL for main)
+- AND (`status = 'approved'` OR `created_by = current_account`)
+
+### Branch merged elsewhere detection
+
+When syncing:
+1. Check if `current_branch.merged_at IS NOT NULL`
+2. If yes, and you have uncommitted changes: show notification
+3. Options: Switch to main, Move WIP to new branch, Continue working
+
+## CLI Commands
+
+**Minimal additions:**
+```bash
+# Submit pending changes for approval (optional - can also happen on push)
+darklang approvals submit
+
+# List approval requests for packages you own
+darklang approvals incoming
+
+# List approval requests you've submitted
+darklang approvals outgoing
+
+# Approve a request
+darklang approvals approve <request-id>
+
+# Reject a request
+darklang approvals reject <request-id>
+```
+
+**Push command output:**
+When pushing, show which locations were approved vs had approval requests created:
+```
+✓ MyCompany.foo - approved and synced
+✓ MyCompany.bar - approved and synced
+⚠ Stripe.charge - approval request created (#abc123)
+```
+
+## VSCode Extension Changes
+
+**Minimal additions:**
+- TreeView: "Approval Requests" section
+  - Incoming (for packages you own)
+  - Outgoing (requests you submitted)
+- Context menu: "Approve/Reject" on approval request items
+- Status indicator: Files with pending locations show 📝 badge
+- Notification when branch merged elsewhere
+
+## Implementation Phases
+
+### Phase 1: Basic Ownership Checks
+- Add `status` field to locations
+- Check ownership on save: `location.owner == current_account`
+- If owned: approve immediately
+- If not owned: mark as pending
+- Update name resolution to filter by status
+
+### Phase 2: Approval Requests
+- Create approval_requests tables
+- CLI commands for viewing/approving
+- VSCode TreeView for approval requests
+- Link pending locations to approval requests
+
+### Phase 3: Branch Merged Elsewhere
+- Add merged_at to branches
+- Detect merged branches on sync
+- Show notification with options
+- Handle WIP gracefully
+
+## What We're NOT Doing (for now)
+
+- Peer review system
+- Breaking change notifications
+- Offline sync queue
+- Conflict resolution UI
+- Competing requests detection
+- Version pinning
+- Cherry-picking
+- Rollback
+- References tracking
+
+These can be added later if actually needed.

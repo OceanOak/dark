@@ -1,0 +1,72 @@
+# Branch Merged Elsewhere - Overview
+
+## The Problem
+When a user merges a branch on Machine 1, but Machine 2 still has that same branch checked out with work-in-progress (WIP) changes,
+we need to gracefully handle this state.
+
+## The Basic Flow
+1. User creates branch 'feature-x' and works on it across multiple machines
+2. On Machine 1: user merges 'feature-x' to main
+3. Branch 'feature-x' is now marked as merged in the database
+4. On Machine 2: user still has 'feature-x' checked out with uncommitted local changes
+5. Machine 2 syncs and detects the branch was merged elsewhere
+6. System needs to give user clear options for their WIP changes
+
+## Detection
+When syncing, check if:
+- Current checked-out branch has `merged_at` timestamp set
+- That timestamp is newer than last local sync
+- User has local WIP changes
+
+## Options for Handling WIP
+
+### Option A: Notify and Prompt
+- Immediately notify user that branch was merged
+- Show notification: "Branch 'feature-x' was merged on another machine. You have 3 unsaved changes."
+- Actions: [Review Changes] [Switch to Main] [Create New Branch from WIP]
+- If user ignores, keep them on the merged branch but show warning
+
+### Option B: Block Until Resolved
+- Prevent any operations until user resolves the situation
+- Force user to choose: discard WIP, move WIP to new branch, or keep working on merged branch
+
+### Option C: Allow Continued Work
+- Let user continue working on the merged branch
+- Show indicator that branch is merged but allow local work
+- On next sync/push, create new branch automatically or prompt
+
+
+
+**Question**: Should ops track which instance created them?
+- Could help with conflict resolution
+- Could help with "branch merged elsewhere" detection
+- Add `instance_id` to ops?
+
+
+
+## Implementation Plan
+
+### Database Changes
+- `branches` table already has `merged_at` and `merged_by` columns
+- Track last sync timestamp per machine/instance to detect "merged elsewhere"
+- Consider adding `branch_status` field: 'active', 'merged', 'abandoned'
+
+### Backend (F#)
+- Add check during sync to detect if current branch was merged elsewhere
+- Return flag in sync response: `currentBranchMergedElsewhere: bool`
+- Add endpoint to list WIP changes on current branch
+- Add endpoint to move WIP to new branch
+
+### CLI
+- On `darklang pull` or `darklang sync`, detect merged-elsewhere state
+- Show warning message with current WIP summary
+- Add command: `darklang branch wip-status` to show WIP changes
+- Add command: `darklang branch move-wip <new-branch-name>` to move changes
+
+### VSCode Extension
+- On sync/pull, check if current branch was merged elsewhere
+- Show notification banner with WIP count and action buttons
+- Add status bar indicator: "Branch merged elsewhere (3 WIP changes)"
+- Provide UI to review diff of WIP changes
+- Provide quick action to create new branch with WIP
+- Consider disabling save on merged branches (with override option)

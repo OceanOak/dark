@@ -56,13 +56,26 @@ let parseUuidParam (value: String) : Stdlib.Result.Result<Uuid, Stdlib.Http.Resp
     Stdlib.Result.Result.Error response
 
 
+// TODO APPROVAL WORKFLOW:
+// This endpoint receives ops from remote instances during sync
+// Need to add currentAccount tracking and validation:
+// 1. Extract currentAccount from auth header or query param
+// 2. Pass currentAccount to Builtin.scmAddOps (which calls PackageOpPlayback.applyOps)
+// 3. Ops will be applied with ownership checking:
+//    - Owned namespace ops → status='approved'
+//    - Unowned namespace ops → status='pending'
+// 4. Return info about which ops were approved vs pending
+
 [<HttpHandler("POST", "/ops")>]
 let _handler _req =
   let bodyStr = Stdlib.String.fromBytesWithReplacement request.body
   let branchID = getBranchIDFromQuery request
+  // TODO: Get currentAccount from request (auth header, query param, or session)
+  // let currentAccount = getAccountFromRequest request
 
   match Builtin.jsonParse<List<LanguageTools.ProgramTypes.PackageOp>> bodyStr with
   | Ok ops ->
+    // TODO: Pass currentAccount to scmAddOps
     match Builtin.scmAddOps branchID ops with
     | Ok insertedCount ->
       let countStr = Builtin.int64ToString insertedCount
@@ -78,9 +91,27 @@ let _handler _req =
     Stdlib.Http.response (Stdlib.String.toBytes errorMsg) 400L
 
 
+// TODO APPROVAL WORKFLOW:
+// This endpoint sends ops to remote instances during sync
+// Need to filter ops by approval status based on requesting account:
+// 1. Get currentAccount from request (auth header, query param)
+// 2. Filter ops by approval status:
+//    - status='approved' (everyone sees approved)
+//    - OR (status='pending' AND created_by=currentAccount) (see your own pending)
+//    - OR (status='pending' AND owner=currentAccount) (owners see pending changes to review)
+// 3. Optionally filter by namespace (QUESTION 1 - Pull Scope):
+//    - Add ?owner=X to only return ops for namespaces owned by X
+//    - Add ?namespaces=X,Y,Z to return ops for specific namespaces
+// 4. PackageOps.getSince needs to be updated to accept currentAccount and apply filtering
+
 [<HttpHandler("GET", "/ops")>]
 let _handler _req =
   let branchID = getBranchIDFromQuery request
+  // TODO: Get currentAccount from request for approval filtering
+  // let currentAccount = getAccountFromRequest request
+  // TODO: Get optional owner/namespace filters from query params
+  // let ownerFilter = getQueryParam request "owner"
+  // let namespacesFilter = getQueryParam request "namespaces"
 
   match getQueryParam request "since" with
   | None ->
@@ -90,6 +121,7 @@ let _handler _req =
   | Some sinceStr ->
     match Stdlib.DateTime.parse sinceStr with
     | Ok sinceDate ->
+      // TODO: Pass currentAccount and filters to getSince for approval filtering
       let ops = Darklang.SCM.PackageOps.getSince branchID sinceDate
       let json = ops |> Builtin.jsonSerialize<List<LanguageTools.ProgramTypes.PackageOp>>
       Stdlib.Http.response (Stdlib.String.toBytes json) 200L

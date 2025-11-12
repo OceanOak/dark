@@ -1,0 +1,308 @@
+# The Happy Path - Common Workflows
+
+## Scenario 1: Solo Developer, Own Namespace
+
+Alice is working on her own namespace `Alice.*`
+
+### Daily Workflow
+
+**Morning: Start working**
+1. Opens VSCode
+2. Auto-syncs in background - pulls any changes from other machines
+3. Starts editing `Alice.Utils.formatDate`
+4. Saves - creates ops locally
+5. Auto-pushes in background
+6. Everything marked as 'approved' (she owns namespace)
+7. No interruptions, no prompts
+
+**Afternoon: Continue working**
+8. Edits more functions in `Alice.*` namespace
+9. Each save: local ops created, auto-pushed, approved
+10. Testing locally - everything works
+11. Closes laptop, goes home
+
+**Evening: On different machine**
+12. Opens VSCode on home machine
+13. Auto-sync pulls morning's work
+14. Continues editing where left off
+15. Same smooth experience
+
+**Key point**: No branches needed, no approval workflow, just edit → save → sync. Like working in a local file system.
+
+## Scenario 2: Team Collaboration, Shared Namespace
+
+Alice, James, and Charlie work on `MyCompany.*` namespace. All three are owners.
+
+### Working on Same Namespace
+
+**Alice creates new feature**
+1. Edits `MyCompany.Orders.create`
+2. Saves, auto-pushes
+3. Approved immediately (she owns namespace)
+
+**James pulls Alice's changes**
+4. Auto-sync pulls Alice's new function
+5. James can now use `MyCompany.Orders.create`
+6. No approval needed
+
+**Charlie works in parallel**
+7. Edits different function `MyCompany.Products.list`
+8. No conflicts (different locations)
+9. Saves, auto-pushes, approved
+10. Alice and James sync, get Charlie's changes
+
+**Key point**: Team members can work in parallel on shared namespace without friction as long as they're not editing the same locations.
+
+## Scenario 3: Branch for Experimentation
+
+Alice wants to try a risky refactor without affecting main.
+
+### Branch Workflow
+
+**Create branch**
+1. `darklang branch create refactor-orders`
+2. Now on branch 'refactor-orders'
+3. Local main unchanged
+
+**Work on branch**
+4. Edits multiple functions in `MyCompany.Orders.*`
+5. Saves - creates ops with `branch_id = 'refactor-orders'`
+6. Pushes - syncs branch ops to server
+7. No approval needed (still her namespace)
+8. Branch is isolated, main unaffected
+
+**Test on branch**
+9. Runs tests locally
+10. Everything works great
+
+**Merge back to main**
+11. `darklang branch merge refactor-orders`
+12. No conflicts (nobody edited same locations on main)
+13. Ops moved from branch to main locally
+14. Push to server
+15. Approved (she owns namespace)
+16. Team members sync, get the refactored code
+
+**Key point**: Branches work like git branches - isolated experimentation, clean merge when ready.
+
+## Scenario 4: Using External Packages
+
+Alice uses packages from `Darklang.Stdlib.*` in her code.
+
+### Using Approved Packages
+
+**Import and use**
+1. Alice types `Darklang.Stdlib.List.map` in her code
+2. Name resolution finds latest approved version
+3. Function works, no approval needed (it's already approved)
+4. Code references specific hash internally
+
+**Upstream updates**
+5. Darklang team updates `List.map` with performance improvements
+6. Pushes to server, auto-approved (they own namespace)
+7. Alice gets notification: "Update available for Darklang.Stdlib.List.map"
+8. Alice reviews diff, decides to update
+9. Re-saves code, name resolves to new version
+10. Everything works
+
+**Key point**: Using external packages is seamless. Updates are opt-in, not forced.
+
+## Scenario 5: Multi-Machine Development
+
+Alice works on laptop and desktop.
+
+### Seamless Multi-Machine Sync
+
+**On laptop**
+1. Creates branch 'new-feature'
+2. Makes changes, saves
+3. Pushes to server
+4. Branch synced to server
+
+**On desktop**
+5. Opens project
+6. Auto-sync pulls branch 'new-feature'
+7. Switches to branch: `darklang branch switch new-feature`
+8. Sees all laptop changes
+9. Continues editing
+10. Saves, pushes
+
+**Back on laptop**
+11. Auto-sync pulls desktop changes
+12. Both machines in sync
+13. No conflicts (same person, same branch)
+
+**Key point**: Work seamlessly across multiple machines without thinking about sync.
+
+## Scenario 6: Quick Fix on Main
+
+Alice needs to quickly fix a bug in production.
+
+### Direct Main Edit (No Branch)
+
+**Fix the bug**
+1. On main branch
+2. Edits `MyCompany.API.handleError`
+3. Fixes bug
+4. Saves
+5. Pushes - auto-approved (owns namespace)
+
+**Deploy**
+6. CI/CD picks up change
+7. Tests pass
+8. Deploys automatically
+9. Bug fixed in minutes
+
+**Key point**: No ceremony for quick fixes. Edit, save, push, done.
+
+## Scenario 7: Review Before Merge (Optional)
+
+Alice wants James's feedback before merging branch to main.
+
+### Optional Peer Review
+
+**Request review**
+1. Alice on branch 'new-feature'
+2. `darklang review request --branch new-feature --reviewer James`
+3. James gets notification
+
+**James reviews**
+4. James opens review link
+5. Sees diff, leaves comments
+6. Alice addresses comments
+7. James approves
+
+**Merge**
+8. Alice merges to main
+9. Pushes - auto-approved (owns namespace)
+10. Done
+
+**Key point**: Review is optional and doesn't block the merge. It's for quality, not permissions.
+
+## Scenario 8: Offline Work
+
+Alice on airplane, no internet.
+
+### Offline Development
+
+**Work offline**
+1. Opens VSCode
+2. Sees "Offline" indicator
+3. Edits code normally
+4. Saves - creates ops locally
+5. Ops queued for sync
+6. Can test locally with cached packages
+
+**Back online**
+7. Connects to wifi
+8. Auto-sync processes queue
+9. Pushes all queued ops
+10. All approved (owns namespace)
+11. Back in sync
+
+**Key point**: Offline work is seamless. Everything queued and synced when online.
+
+## Scenario 9: Fresh Start on New Machine
+
+Alice sets up development on new machine.
+
+### Initial Setup
+
+**Clone/setup**
+1. Installs Darklang CLI
+2. Authenticates: `darklang login`
+3. Opens project: `darklang open myproject`
+4. Syncs all packages automatically
+5. Ready to work
+
+**Start editing**
+6. Opens VSCode
+7. Extension connects to Darklang
+8. Can browse all packages
+9. Edits her namespace
+10. Same smooth experience as other machines
+
+**Key point**: New machine setup is simple. One login, auto-sync, ready to go.
+
+## Scenario 10: No Conflicts, Smooth Merge
+
+Alice and James work on same namespace but different parts.
+
+### Parallel Work Without Conflicts
+
+**Alice's work**
+1. Branch 'feature-a'
+2. Edits `MyCompany.Orders.create`
+3. Merges to main
+4. Pushes
+
+**James's work**
+5. Branch 'feature-b'
+6. Edits `MyCompany.Products.list` (different location)
+7. Syncs main (gets Alice's changes)
+8. No conflicts
+9. Merges to main
+10. Pushes
+
+**Result**
+11. Main has both features
+12. No conflict resolution needed
+13. Everything just works
+
+**Key point**: Working on different parts of codebase is conflict-free.
+
+## Common Patterns
+
+### The "Git Flow" Experience
+
+Darklang should feel like git for teams who know git:
+- `darklang pull` = `git pull`
+- `darklang push` = `git push`
+- `darklang branch create X` = `git checkout -b X`
+- `darklang branch merge X` = `git merge X`
+
+### The "Just Works" Principle
+
+For owned namespaces:
+- No approval workflows
+- No blocking prompts
+- No interruptions
+- Just edit → save → sync → done
+
+### Auto-Everything
+
+Things that should happen automatically:
+- Background sync (pull/push)
+- Conflict detection (but not blocking)
+- Namespace ownership checking
+- Content caching for offline
+
+### Explicit When Needed
+
+Things that should require explicit action:
+- Merging branches
+- Resolving conflicts (at merge time)
+- Updating to new versions (opt-in)
+- Submitting approval requests (for unowned namespaces)
+
+## What Makes It "Happy"?
+
+1. **No Friction**: Edit, save, sync. That's it.
+2. **No Surprises**: Predictable behavior like git
+3. **No Blocking**: Conflicts detected but don't stop work
+4. **No Ceremony**: Quick fixes don't need branches
+5. **Ownership = Freedom**: Own namespace = no approvals
+6. **Async Collaboration**: Team works in parallel smoothly
+7. **Offline Capable**: Work anywhere, sync later
+8. **Fast**: Operations feel instant
+
+## When It's NOT the Happy Path
+
+The happy path breaks down when:
+- Editing unowned namespaces (need approval)
+- Conflicts during merge (need resolution)
+- Multiple users edit same location (need conflict resolution)
+- Branch merged elsewhere with WIP (need to handle WIP)
+- Competing approval requests (owner needs to choose)
+
+These edge cases are covered in the other files.

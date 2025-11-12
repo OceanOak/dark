@@ -609,6 +609,29 @@ module PackageFn =
 
 
 ///
+/// APPROVAL WORKFLOW DESIGN:
+///
+/// Option 1 (RECOMMENDED - No new ops needed):
+/// - Approval is workflow metadata, not package content
+/// - Existing SetFnName/SetTypeName/SetValueName ops create locations with status='pending'
+/// - Approval changes metadata in locations table (status field)
+/// - approval_requests table tracks approval decisions separately
+/// - Flow:
+///   1. User creates SetFnName(Stripe.charge, id=abc) → stored with status='pending'
+///   2. Op syncs to server (stored in package_ops)
+///   3. Owner approves via UI → updates locations.status='approved'
+///   4. Approval tracked in approval_requests table
+///   5. Other instances sync and see status='approved'
+/// - Pros: Simpler, separates content ops from approval workflow
+/// - Cons: Status changes not in ops history
+///
+/// Option 2 (Implemented below - Approval as ops):
+/// - Approval decisions are package operations
+/// - Full audit trail of approvals in package_ops
+/// - Can sync approval decisions as ops
+/// - Pros: Complete history, consistent "ops as source of truth"
+/// - Cons: Mixes workflow metadata with package content, more complex
+///
 type PackageOp =
   // not handled -- punt: DB operations, Crons, http handlers...
   | AddType of typ : PackageType.PackageType // note: has ID in it
@@ -620,6 +643,12 @@ type PackageOp =
   | SetTypeName of id : FQTypeName.Package * location : PackageLocation
   | SetValueName of id : FQValueName.Package * location : PackageLocation
   | SetFnName of id : FQFnName.Package * location : PackageLocation
+
+  // Approval workflow operations (Option 2)
+  // These track approval decisions as operations
+  | ApproveLocation of locationId : string * approvalRequestId : string
+  | RejectLocation of locationId : string * approvalRequestId : string * reason : Option<string>
+
 // DB should have _history_ of old item names, but only one active PackageLocation
 
 
@@ -736,6 +765,53 @@ type BranchID = uuid
 
 /// A package entity paired with its location
 type LocatedItem<'T> = { entity : 'T; location : PackageLocation }
+
+
+// --
+// Approval workflow types
+// --
+
+/// Status shared by locations and approval requests
+/// - For locations: whether the location is approved for general use
+/// - For approval requests: lifecycle state of the request
+type ApprovalStatus =
+  | Pending   // Awaiting review/approval
+  | Approved  // Approved for use
+  | Rejected  // Rejected
+
+/// Represents a user account
+type Account =
+  { id : uuid
+    username : string
+    email : Option<string>
+    createdAt : NodaTime.Instant }
+
+/// Status of an approval request (overall lifecycle)
+type ApprovalRequestStatus =
+  | Open       // Request is open for review (has pending locations)
+  | Completed  // All locations have been decided (approved or rejected)
+
+/// An approval request groups multiple location changes (like a PR)
+/// Supports partial approvals - owner can approve some locations and leave others pending
+type ApprovalRequest =
+  { id : uuid
+    createdBy : string  // username or account ID
+    createdAt : NodaTime.Instant
+    status : ApprovalRequestStatus
+    targetNamespace : Option<string>  // e.g., "Stripe" - for filtering by owner
+    sourceBranchId : Option<uuid>     // Link to originating branch
+    title : Option<string>
+    description : Option<string> }
+
+/// Links an approval request to a specific location with per-location review decision
+/// Enables partial approvals: each location can be approved/rejected independently
+type ApprovalRequestLocation =
+  { approvalRequestId : uuid
+    locationId : string
+    reviewStatus : ApprovalStatus  // Pending | Approved | Rejected
+    reviewReason : Option<string>
+    reviewedAt : Option<NodaTime.Instant> }
+
 
 module Search =
   /// The type of entity to search for

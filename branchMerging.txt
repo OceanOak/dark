@@ -1,0 +1,125 @@
+# Branch Merging
+
+## Basic Flow
+1. Dev creates branch 'feature-x' and makes changes (creates PackageOps with branch_id = 'feature-x')
+2. Dev makes changes (creates PackageOps with branch_id = 'feature-x')
+3. Meanwhile, main branch may have received other changes (from syncing)
+4. Dev initiates merge: `dark branch merge feature-x`
+5. System collects all PackageOps from the branch
+6. System detects conflicts (if any exist)
+7. Dev resolves conflicts if needed
+8. System moves ops from branch to main (changes branch_id from 'feature-x' to NULL)
+   - Re-apply the ops with branch_id = NULL (or target branch) (copy to preserve history)?
+9. Branch is marked as merged
+
+Merge is a local operation. Namespace ownership is NOT checked during merge - it's checked later when pushing to server.
+
+Does merge trigger a sync of main first?
+  Options:
+  1. Auto-sync main before merge - Automatically pull latest main before merging
+    - Ensures you're merging against the latest state
+    - More automatic but surprising (might pull unexpected changes)
+  2. Require manual sync - User must sync main separately before merge
+
+  3. Check if main is out of sync, prompt user to sync first
+    - "Main was last synced 2 hours ago. Sync before merging? [Yes/No]"
+
+## Merge Strategies
+
+Strategy A: All or Nothing
+- Entire merge must complete successfully or nothing is applied
+- If any conflicts detected, user must resolve all before merge completes
+
+
+Strategy B: Selective Merge
+- Allow user to choose which ops to merge
+- Cherry-pick specific changes from branch
+
+
+## Conflict Detection
+
+Conflicts occur when the same location has been modified on both branch and target since divergence:
+- Branch has: `SetFnName(location=Foo.bar, item_id=abc123, timestamp=T1)`
+- Main has: `SetFnName(location=Foo.bar, item_id=def456, timestamp=T2)`
+- Both added since branch diverged from main
+
+Resolution options:
+1. Keep branch version: Use abc123
+2. Keep main version: Use def456
+3. Manual merge: Show diff, let user create new version combining both
+4. Abort merge: Cancel and let user resolve manually
+
+## When Namespace Ownership Matters
+
+Namespace ownership is **not checked during merge** because merge is local. (should it be?)
+
+Ownership is checked when **pushing to server**:
+- When you push ops to server, server checks which namespaces you own
+- Ops in owned namespaces → marked as 'approved'
+- Ops in unowned namespaces → marked as 'pending', approval requests created automatically
+
+Note:
+Consider whether approval requests should be created/sent:
+- Before merge: Create approval requests for unowned namespace ops before allowing merge (manual?)
+- At merge time: Create approval requests as part of the merge step
+- After merge, on push - create when pushing to server
+
+
+
+Questions:
+1. Should merge be all-or-nothing or allow partial/selective merges?
+2. Should merged ops keep their original timestamps or get new ones?
+3. Can a branch be merged multiple times?
+4. Should we support "dry-run" to preview what would happen?
+5. Should we support "rollback" to undo a merge?
+
+
+## Special Cases
+
+### Merge with No Changes
+- Branch has no ops or all ops already exist on target
+- Mark branch as merged, no-op
+
+### Merge After Branch Deleted Elsewhere
+- Branch was merged/deleted on another machine
+- Covered in branchMergedElsewhere.txt
+
+### Multiple Users Merging to Main
+- User A merges branch X to local main (changes Foo.bar)
+- User B merges branch Y to local main (changes Foo.bar)
+- Both push to server
+- Server detects conflicting ops
+- Handled by sync conflict resolution (see syncConflicts.txt)
+
+
+## Implementation Plan
+
+### Database Changes
+- Add `merged_at` and `merged_by` to `branches` table (may already exist)
+- Add `merge_status` field: 'not_merged', 'merging', 'merged', 'partially_merged'
+- Track which ops were part of which merge (for rollback/history)
+- Add `merge_conflicts` table to track detected conflicts during merge
+
+### Backend (F#)
+- Add merge logic to collect ops from source branch
+- Detect conflicts by comparing ops on branch vs target since divergence
+- Move ops from branch to main (update branch_id)
+- Add transaction support for atomic merges
+- Add endpoint for dry-run merge (preview without applying)
+- Add endpoint for conflict resolution
+- Namespace ownership checking happens in push/sync logic, not merge logic
+
+### CLI
+- Add `darklang branch merge <branch-name>` command
+- Add `darklang branch merge <branch-name> --dry-run` for preview
+- Show merge summary: X ops merged, Y conflicts
+- Interactive conflict resolution prompts
+- Add `darklang branch merge-status` to check in-progress merges
+
+### VSCode Extension
+- Add "Merge Branch" command in command palette and branch tree view
+- Show merge preview dialog before confirming
+- Highlight conflicts in diff view
+- Provide UI for conflict resolution (choose branch/main/manual)
+- Add notification when merge completes or needs attention
+- After merge, remind user to push if they want to share changes

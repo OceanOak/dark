@@ -1,5 +1,46 @@
 module Darklang.SCM.Sync
 
+// TODO APPROVAL WORKFLOW QUESTIONS:
+//
+// OVERALL STRATEGY:
+// - Need currentAccount parameter to know who is syncing
+// - All sync operations need to be aware of approval status
+//
+// QUESTION 1: PULL SCOPE - What gets pulled?
+// Option A: Pull ALL approved ops (any namespace)
+//   - Keeps entire platform in sync
+//   - Simple to reason about
+// Option B: Pull only YOUR namespaces (where owner = currentAccount)
+//   - More focused, less noise
+//   - Might miss dependencies
+// Option C: Pull owned + referenced namespaces (smart filtering)
+//   - Most practical - you get what you need
+//   - More complex to implement
+//
+// QUESTION 2: PENDING VISIBILITY - Who sees pending changes?
+// Proposed: Creator + owner only
+//   SQL: status='approved' OR (status='pending' AND (created_by=@current_account OR owner=@current_account))
+// Alternative: Anyone can opt-in with --include-pending flag
+//
+// QUESTION 3: PUSH APPROVAL REQUESTS - When to create?
+// Option A: Auto-create on push
+//   - Automatic, convenient
+//   - Might create requests prematurely
+// Option B: Explicit 'darklang approvals submit' command
+//   - More control, user can review first
+//   - Requires extra step
+// Option C: Prompt during push ("Create approval request? [Y/n]")
+//   - Interactive, good for learning
+//   - Can be annoying for power users
+//
+// QUESTION 4: PUSH PENDING OPS - Do they sync to server?
+// Proposed: Yes, sync them marked as pending
+//   - Server has them for owner to review
+//   - More transparent
+// Alternative: Keep pending local until approved
+//   - More private
+//   - But owner can't review
+
 /// Synchronize package ops with a remote Darklang instance
 /// Returns a result with success message or error
 let sync
@@ -7,6 +48,9 @@ let sync
   (remoteURL: String)
   (branchID: Stdlib.Option.Option<Uuid>)
   : Stdlib.Result.Result<String, String> =
+  // TODO: Add currentAccount parameter
+  // let currentAccount = ??? // Need to get from context/auth
+
   // Get last sync date with this instance
   let lastSyncOpt = Builtin.scmGetLastSyncDate instanceID
 
@@ -20,6 +64,25 @@ let sync
   let opsToPush = PackageOps.getSince branchID sinceDate
 
   let opsPushedCount = Stdlib.List.length opsToPush
+
+  // TODO APPROVAL WORKFLOW - PUSH LOGIC:
+  // Before pushing, we should:
+  // 1. Check which ops create locations in unowned namespaces
+  // 2. Those ops should already be marked status='pending' (from PackageOpPlayback.applySetName)
+  // 3. After pushing, decide: auto-create approval requests? prompt? explicit command?
+  //
+  // Pseudocode:
+  // let pendingLocations = Approvals.listPendingLocations currentAccount
+  // if not (List.isEmpty pendingLocations) then
+  //   // OPTION A: Auto-create approval requests
+  //   let! requests = Approvals.createApprovalRequestsForAllPending currentAccount branchID
+  //   // Show: "✓ Approval request #abc123 created for 'Stripe' namespace"
+  //
+  //   // OPTION B: Show message and require explicit command
+  //   // Show: "You have N pending changes. Run 'darklang approvals submit'"
+  //
+  //   // OPTION C: Prompt interactively
+  //   // Show: "Create approval requests? [Y/n]"
 
   // Push ops to remote in batches
   let pushResult =
@@ -89,9 +152,28 @@ let sync
   match pushResult with
   | Error msg -> Stdlib.Result.Result.Error msg
   | Ok pushedCount ->
+    // TODO APPROVAL WORKFLOW - PULL LOGIC:
+    // Need to filter pulled ops by approval status
+    //
+    // The server endpoint GET /ops?since={date} should filter:
+    // - status='approved' (everyone sees approved)
+    // - OR (status='pending' AND created_by=currentAccount) (see your own pending)
+    // - OR (status='pending' AND owner=currentAccount) (owners see pending changes to their namespaces)
+    //
+    // Additional filtering (QUESTION 1 - Pull Scope):
+    // - Option A: Pull all approved ops (no namespace filtering)
+    // - Option B: Add &owner=currentAccount to only pull your namespaces
+    // - Option C: Add &namespaces=X,Y,Z to pull specific namespaces you care about
+    //
+    // Example URL with filtering:
+    // $"{remoteURL}/ops?since={sinceDateStr}&currentAccount={currentAccount}"
+    // or
+    // $"{remoteURL}/ops?since={sinceDateStr}&currentAccount={currentAccount}&owner={currentAccount}"
+
     // Pull ops from remote
     let pullRequest =
       let sinceDateStr = Stdlib.DateTime.toString sinceDate
+      // TODO: Add currentAccount parameter to query string for approval filtering
       Stdlib.HttpClient.get $"{remoteURL}/ops?since={sinceDateStr}" []
 
     match pullRequest with

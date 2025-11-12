@@ -83,14 +83,27 @@ let private applyAddFn (fn : PT.PackageFn.PackageFn) : Task<unit> =
   }
 
 /// Apply a Set*Name op to the locations table
+// TODO: Need to thread currentAccount through the call stack:
+// - applySetName needs currentAccount parameter
+// - applyOp needs to pass it to applySetName
+// - applyOps needs to receive it and pass to applyOp
+// - Callers of applyOps need to provide currentAccount
+// Consider: Should account context be stored in a request/session object?
 let private applySetName
   (branchID : Option<PT.BranchID>)
   (itemId : uuid)
   (location : PT.PackageLocation)
   (itemType : string)
+  (currentAccount : string)  // NEW: current user's account name/id
   : Task<unit> =
   task {
     let modulesStr = String.concat "." location.modules
+
+    // APPROVAL WORKFLOW: Check ownership and determine status
+    // If user owns the namespace, auto-approve. Otherwise, mark as pending.
+    let status =
+      if location.owner = currentAccount then "approved"
+      else "pending"
 
     // First, deprecate any existing location for this item in this branch
     // (handles moves: old location gets deprecated, new location created)
@@ -112,12 +125,13 @@ let private applySetName
       |> Sql.executeStatementAsync
 
     // Insert new location entry with unique location_id
+    // NOW INCLUDES: status and created_by for approval workflow
     let locationId = System.Guid.NewGuid()
     do!
       Sql.query
         """
-        INSERT INTO locations (location_id, item_id, branch_id, owner, modules, name, item_type)
-        VALUES (@location_id, @item_id, @branch_id, @owner, @modules, @name, @item_type)
+        INSERT INTO locations (location_id, item_id, branch_id, owner, modules, name, item_type, status, created_by)
+        VALUES (@location_id, @item_id, @branch_id, @owner, @modules, @name, @item_type, @status, @created_by)
         """
       |> Sql.parameters
         [ "location_id", Sql.uuid locationId
@@ -129,35 +143,49 @@ let private applySetName
           "owner", Sql.string location.owner
           "modules", Sql.string modulesStr
           "name", Sql.string location.name
-          "item_type", Sql.string itemType ]
+          "item_type", Sql.string itemType
+          "status", Sql.string status           // NEW: approval status
+          "created_by", Sql.string currentAccount ]  // NEW: track creator
       |> Sql.executeStatementAsync
   }
 
 
 /// Apply a single PackageOp to the projection tables
 /// branchID: None = main/merged, Some(id) = branch-specific
-let applyOp (branchID : Option<PT.BranchID>) (op : PT.PackageOp) : Task<unit> =
+// TODO: Add currentAccount parameter here and pass to applySetName
+let applyOp
+  (branchID : Option<PT.BranchID>)
+  (currentAccount : string)  // NEW: needs to be passed through
+  (op : PT.PackageOp)
+  : Task<unit> =
   task {
     match op with
     | PT.PackageOp.AddType typ -> do! applyAddType typ
     | PT.PackageOp.AddValue value -> do! applyAddValue value
     | PT.PackageOp.AddFn fn -> do! applyAddFn fn
     | PT.PackageOp.SetTypeName(id, location) ->
-      do! applySetName branchID id location "type"
+      do! applySetName branchID id location "type" currentAccount  // Pass through
     | PT.PackageOp.SetValueName(id, location) ->
-      do! applySetName branchID id location "value"
+      do! applySetName branchID id location "value" currentAccount  // Pass through
     | PT.PackageOp.SetFnName(id, location) ->
-      do! applySetName branchID id location "fn"
+      do! applySetName branchID id location "fn" currentAccount  // Pass through
+    // TODO: Handle new ApproveLocation and RejectLocation ops (from Option 2)
+    | PT.PackageOp.ApproveLocation(locationId, approvalRequestId) ->
+      failwith "TODO: implement ApproveLocation op handling"
+    | PT.PackageOp.RejectLocation(locationId, approvalRequestId, reason) ->
+      failwith "TODO: implement RejectLocation op handling"
   }
 
 
 /// Apply a list of PackageOps to the projection tables
 /// This is used during package loading/reload
+// TODO: Add currentAccount parameter here and pass to applyOp
 let applyOps
   (branchID : Option<PT.BranchID>)
+  (currentAccount : string)  // NEW: needs to be passed through
   (ops : List<PT.PackageOp>)
   : Task<unit> =
   task {
     for op in ops do
-      do! applyOp branchID op
+      do! applyOp branchID currentAccount op
   }

@@ -1,0 +1,338 @@
+# Peer Review (Non-Owner) - Overview
+
+## The Problem
+Sometimes you want feedback from teammates before submitting to the namespace owner:
+- Share work-in-progress on a branch with colleague
+- Get code review from teammate (not the namespace owner)
+- Collaborate on proposal before submitting for approval
+- Request feedback on approach before formal submission
+
+This is separate from namespace owner approval - it's informal peer feedback.
+
+## Use Cases
+
+### Use Case 1: Pre-Approval Review
+1. Alice working on changes to `Stripe.charge` (doesn't own Stripe)
+2. Alice wants John's feedback before submitting to Stripe owner
+3. Alice shares branch with John
+4. John reviews, leaves comments
+5. Alice iterates based on feedback
+6. Alice submits polished version to Stripe owner
+
+### Use Case 2: Team Collaboration
+1. Team working on shared namespace `MyCompany.*`
+2. Alice creates branch with new features
+3. Wants team review before merging to main
+4. Shares branch with team
+5. Team reviews, discusses
+6. Consensus reached, merge to main
+
+### Use Case 3: Learning/Mentoring
+1. Junior dev working on contribution
+2. Wants senior dev to review approach
+3. Shares branch or specific changes
+4. Senior dev provides guidance
+5. Junior dev improves code
+6. Eventually submits for real approval
+
+### Use Case 4: External Contribution
+1. Outside developer wants to contribute to namespace
+2. Creates branch with proposed changes
+3. Shares with maintainers for informal feedback
+4. Maintainers suggest improvements
+5. Developer iterates
+6. Formal approval request submitted
+
+## Sharing Mechanisms
+
+### Option A: Share Branch Link
+- Every branch has a URL: `https://darklang.com/branch/abc123`
+- Anyone with link can view branch
+- Read-only by default
+- Can add comments/reviews
+
+**Pros**: Simple, works like GitHub PR preview
+**Cons**: Branch might change while being reviewed
+
+### Option B: Share Snapshot
+- Create immutable snapshot of current branch state
+- Snapshot URL: `https://darklang.com/review/abc123`
+- Frozen in time, won't change during review
+- Clearer what's being reviewed
+
+**Pros**: Stable, clear what's under review
+**Cons**: Extra step to create snapshot, might get out of sync
+
+### Option C: Share Specific Ops
+- Select specific ops to share
+- Create review request with just those ops
+- More granular than entire branch
+- "Review these 5 changes please"
+
+**Pros**: Focused review
+**Cons**: More complex UI, might miss context
+
+### Option D: Share Diff
+- Generate diff vs main (or other baseline)
+- Share diff link
+- Reviewer sees what changed
+- Similar to PR diff view
+
+**Pros**: Familiar workflow
+**Cons**: Diff might be large/complex
+
+## Access Control
+
+Who can view shared branch/review?
+
+### Option A: Public Links
+- Anyone with link can view
+- No access control
+- Easy to share
+- Risk: sensitive code leaked
+
+### Option B: Team-Only
+- Only team members can view
+- Requires team/organization concept
+- Secure but less flexible
+- Can't share with external reviewers
+
+### Option C: Explicit Permissions
+- When sharing, specify who can view
+- List of emails or accounts
+- More control but more friction
+- Need permission management UI
+
+### Option D: Time-Limited Links
+- Link expires after X days
+- Balance between convenience and security
+- Revokable if needed
+
+## Review Workflow
+
+### Requesting Review
+
+**Explicit Request**:
+1. Alice runs: `darklang review request --branch feature-x --reviewer John`
+2. John gets notification
+3. John opens review UI
+4. John leaves comments and approval/rejection
+5. Alice sees feedback
+
+**Implicit Share**:
+1. Alice shares branch link with John (Slack, email, etc.)
+2. John opens link
+3. John can comment even without formal request
+4. Less structured but more flexible
+
+### Review UI
+
+What can reviewers do?
+
+**View Code**:
+- Browse all changes on branch
+- See diff vs main
+- View specific ops
+- Navigate package structure
+
+**Comment**:
+- Line-level comments (like GitHub)
+- File-level comments
+- General comments on review
+- Thread discussions
+
+**Approve/Reject**:
+- "Looks good to me" (LGTM)
+- "Needs changes" with reasons
+- "Approve with suggestions"
+- Non-binding (not same as owner approval)
+
+**Suggest Changes**:
+- Propose specific code edits
+- Author can accept/reject suggestions
+- Inline edit proposals
+
+### Review States
+
+**Pending**: Waiting for reviewers
+**Commented**: Reviewers left comments, no decision
+**Approved**: Reviewers approved (informal)
+**Changes Requested**: Reviewers want changes
+**Dismissed**: Review no longer relevant (branch merged/abandoned)
+
+## Notifications
+
+### To Reviewers
+- "Alice requested your review on feature-x"
+- "New changes pushed to branch you're reviewing"
+- "Alice responded to your comment"
+
+### To Author
+- "John approved your changes"
+- "John left 3 comments on feature-x"
+- "All reviewers approved"
+
+### Notification Channels
+- In-app notifications (VSCode, CLI)
+- Email (optional)
+- Webhook (for Slack integration, etc.)
+
+## Iteration Based on Feedback
+
+After receiving feedback:
+
+**Push Updates**:
+1. Alice makes changes based on John's feedback
+2. Pushes new ops to branch
+3. John notified: "feature-x updated"
+4. John can review new changes or mark as approved
+
+**Mark Comments Resolved**:
+- Alice addresses comment, marks as resolved
+- Tracks which feedback has been handled
+- Helps reviewers see what's left
+
+**Re-Request Review**:
+- After significant changes, re-request review
+- "Changes made, please review again"
+- Fresh approval needed
+
+## Relationship to Approval Requests
+
+Peer review is **informal** and **optional**.
+Owner approval is **formal** and **required** (for unowned namespaces).
+
+**Workflow**:
+1. Create branch
+2. Peer review (optional, iterate)
+3. Submit approval request to owner (required)
+4. Owner reviews and approves/rejects (formal)
+5. Merge to main
+
+**Can peer review replace owner approval?**
+- No - owner approval always needed for namespace ownership
+- But team might have policy: "get 2 peer approvals before submitting to owner"
+- Internal workflow, not enforced by system
+
+## Collaborative Editing
+
+Can reviewers edit the branch directly?
+
+### Option A: Read-Only
+- Reviewers can only comment
+- Author must make all changes
+- Clear ownership
+- Slower iteration
+
+### Option B: Collaborative
+- Reviewers can push to branch
+- Like GitHub allowing maintainers to edit PR
+- Faster but can cause confusion
+- "Who changed what?"
+
+### Option C: Suggest Mode
+- Reviewers propose changes
+- Author accepts/rejects with one click
+- Middle ground
+- Clearer than direct editing
+
+## Review History
+
+**Track Reviews**:
+- Who reviewed what and when
+- Comments and approvals preserved
+- Even after merge, can see review history
+- Useful for auditing and learning
+
+**Link to Approval Requests**:
+- When creating approval request, include peer review history
+- Owner sees: "This was reviewed by John and Charlie"
+- Gives owner confidence
+- Or "fast track" if trusted reviewers approved
+
+## Key Questions to Decide
+
+1. How are branches shared - link, snapshot, or explicit request?
+2. Who can view shared branches - public, team-only, or explicit permissions?
+3. Can reviewers edit branch or only comment?
+4. Are reviews tracked in approval requests shown to owner?
+5. Should there be "required reviewers" concept (block merge until approved)?
+6. Can reviews be dismissed or marked stale?
+7. How long do review links stay valid?
+8. Should review comments be threaded (discussions)?
+9. Can reviewers be requested by role ("request review from any senior dev")?
+10. How to handle review notifications (in-app, email, webhook)?
+
+## Integration with Version Control Concepts
+
+This is similar to:
+- **GitHub Pull Requests**: Pre-merge code review
+- **GitLab Merge Requests**: Same concept
+- **Phabricator Diffs**: Snapshot-based review
+
+But adapted for Darklang's op-based system:
+- Reviewing ops instead of commits
+- Branch context instead of PR
+- Peer review separate from namespace approval
+
+## Edge Cases
+
+### Review After Branch Merged
+- Branch merged before review completed
+- Review becomes moot
+- Mark as "dismissed" or "obsolete"
+- Comments still useful for history
+
+### Reviewer Loses Access
+- John invited to review
+- John's account suspended before review
+- Review stuck pending?
+- Auto-dismiss or reassign?
+
+### Author Deletes Branch
+- Review based on branch
+- Branch deleted
+- Review orphaned
+- Preserve snapshot for history?
+
+### Circular Reviews
+- Alice requests John review
+- John requests Alice review
+- Both waiting on each other
+- Detect and warn?
+
+## Implementation Plan
+
+### Database Changes
+- `reviews` table: track review requests
+  - Columns: id, branch_id, requested_by, reviewer, status, created_at
+- `review_comments` table: track comments
+  - Columns: id, review_id, item_id (op or file), line_number, author, text, resolved
+- `review_approvals` table: track approvals/rejections
+  - Columns: id, review_id, reviewer, decision, created_at
+
+### Backend (F#)
+- Add endpoints for creating review requests
+- Add endpoints for commenting
+- Add endpoints for approving/rejecting
+- Generate shareable links with access tokens
+- Notification system for review events
+- Link reviews to approval requests (metadata)
+
+### CLI
+- `darklang review request --branch <name> --reviewer <user>`
+- `darklang review list` - show pending reviews
+- `darklang review show <id>` - view review details
+- `darklang review comment <id> --message "..."`
+- `darklang review approve <id>`
+- `darklang review dismiss <id>`
+
+### VSCode Extension
+- "Request Review" command in branch context menu
+- Review sidebar showing pending reviews
+- Inline comment UI (like GitHub PR view)
+- Notification when review requested or feedback received
+- Diff view for reviewing changes
+- "Resolve comment" action
+- "Approve changes" button
+- Link to share branch (copy link to clipboard)

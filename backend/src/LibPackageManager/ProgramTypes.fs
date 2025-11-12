@@ -15,6 +15,10 @@ module BinarySerialization = LibBinarySerialization.BinarySerialization
 
 
 module Type =
+  // TODO: Add currentAccount parameter for approval filtering
+  // For now, this version doesn't filter by approval status (all locations visible)
+  // APPROVAL WORKFLOW CHANGE NEEDED:
+  // Should filter to: status='approved' OR (status='pending' AND created_by=@current_account)
   let find
     ((branchID, location) : Option<PT.BranchID> * PT.PackageLocation)
     : Ply<Option<PT.FQTypeName.Package>> =
@@ -45,6 +49,37 @@ module Type =
              | None -> Sql.dbnull) ]
         |> Sql.executeRowOptionAsync (fun read -> read.uuid "item_id")
     }
+
+  // TODO: Create approval-aware version
+  // let findWithApprovalFilter
+  //   ((branchID, location, currentAccount) : Option<PT.BranchID> * PT.PackageLocation * string)
+  //   : Ply<Option<PT.FQTypeName.Package>> =
+  //   uply {
+  //     let modulesStr = String.concat "." location.modules
+  //
+  //     return!
+  //       Sql.query
+  //         """
+  //         SELECT item_id
+  //         FROM locations
+  //         WHERE owner = @owner
+  //           AND modules = @modules
+  //           AND name = @name
+  //           AND item_type = 'type'
+  //           AND deprecated_at IS NULL
+  //           AND (branch_id IS NULL OR branch_id = @branch_id)
+  //           AND (status = 'approved' OR (status = 'pending' AND created_by = @current_account))
+  //         ORDER BY created_at DESC
+  //         LIMIT 1
+  //         """
+  //       |> Sql.parameters
+  //         [ "owner", Sql.string location.owner
+  //           "modules", Sql.string modulesStr
+  //           "name", Sql.string location.name
+  //           "branch_id", (match branchID with | Some id -> Sql.uuid id | None -> Sql.dbnull)
+  //           "current_account", Sql.string currentAccount ]
+  //       |> Sql.executeRowOptionAsync (fun read -> read.uuid "item_id")
+  //   }
 
   let get (id : uuid) : Ply<Option<PT.PackageType.PackageType>> =
     uply {
@@ -91,6 +126,9 @@ module Type =
 
 
 module Value =
+  // TODO: Add currentAccount parameter for approval filtering
+  // APPROVAL WORKFLOW CHANGE NEEDED:
+  // Should filter to: status='approved' OR (status='pending' AND created_by=@current_account)
   let find
     ((branchID, location) : Option<PT.BranchID> * PT.PackageLocation)
     : Ply<Option<PT.FQValueName.Package>> =
@@ -167,6 +205,9 @@ module Value =
 
 
 module Fn =
+  // TODO: Add currentAccount parameter for approval filtering
+  // APPROVAL WORKFLOW CHANGE NEEDED:
+  // Should filter to: status='approved' OR (status='pending' AND created_by=@current_account)
   let find
     ((branchID, location) : Option<PT.BranchID> * PT.PackageLocation)
     : Ply<Option<PT.FQFnName.Package>> =
@@ -243,6 +284,11 @@ module Fn =
 
 
 
+// TODO: Add currentAccount parameter for approval filtering
+// APPROVAL WORKFLOW CHANGE NEEDED:
+// All queries in this function need to filter:
+// - status='approved' OR (status='pending' AND created_by=@current_account)
+// This applies to both the submodules query and the entity queries
 let search
   ((branchID, query) : Option<PT.BranchID> * PT.Search.SearchQuery)
   : Ply<PT.Search.SearchResults> =

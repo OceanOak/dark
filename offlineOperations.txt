@@ -1,0 +1,355 @@
+# Offline Operations - Overview
+
+## The Problem
+Users need to work offline (no internet, poor connection, airplane mode) and have their work sync
+properly when back online:
+- Edit code offline
+- Create approval requests offline
+- Resolve conflicts offline (queue resolution for later)
+- Sync when connection restored
+
+## Core Principle: Offline-First
+
+Everything should work offline. Operations are queued locally and synced when online.
+
+## What Works Offline
+
+### 1. Editing Code
+- Save changes to local database
+- Create PackageOps locally
+- All saves work normally, no blocking
+- Changes visible immediately in local environment
+
+### 2. Creating Approval Requests
+- Draft approval requests locally
+- Store in local queue: "pending submission"
+- User can continue working
+- Request sent when online
+
+### 3. Viewing Code
+- View all previously-synced code
+- View own work-in-progress
+- Cannot view new upstream changes (obviously)
+- Last synced timestamp shown
+
+### 4. Name Resolution
+- Resolve names using local database
+- May be stale if new versions exist upstream
+
+### 5. Branching
+- Create new branches locally
+- Switch between branches
+- Merge branches locally (if no conflicts)
+- Branch operations queued for sync
+
+## What Doesn't Work Offline
+
+### 1. Pulling New Changes
+- Cannot fetch upstream changes
+- Work with last-synced state
+- Conflict detection deferred until online
+
+### 2. Viewing Others' WIP
+- Can only see previously-synced approved content
+- Cannot see new pending proposals from others
+- Cannot see real-time collaboration
+
+### 3. Breaking Change Notifications
+- Cannot receive notifications about upstream changes
+- Receive all notifications when back online
+- May be delayed but not lost
+
+## Queued Operations
+
+Operations that happen offline are queued and synced when online.
+
+### Queue Structure
+
+Each queued operation stores:
+- Type: push_ops, submit_approval_request, resolve_conflict, etc.
+- Data: The actual operation data (ops to push, request details, etc.)
+- Created_at: When operation was queued
+- Status: pending, syncing, failed, completed
+- Retry_count: Number of sync attempts
+- Error: Error message if sync failed
+
+### Queue Processing
+
+When connection restored:
+1. Detect online status
+2. Process queue in order (FIFO)
+3. Each operation attempts to sync
+4. On success: mark completed, remove from queue
+5. On failure: increment retry_count, show error
+6. Continue processing rest of queue
+
+### Operation Types
+
+Push Ops:
+- Push locally-created PackageOps to server
+- May conflict with upstream changes (handled on server)
+
+Submit Approval Request:
+- Submit approval request created offline
+- May conflict if namespace changed
+
+Resolve Conflict:
+- User resolved conflict offline, send resolution
+- May be stale if more changes occurred
+
+Pull Request:
+- Fetch specific data (e.g., view someone's proposal)
+- Execute when online
+
+## Conflict Detection When Going Online
+
+When sync happens after offline period:
+
+### Server Has New Changes
+1. User worked offline, created ops
+2. User goes online, attempts sync
+3. Server has conflicting changes from others
+4. Conflicts detected (see syncConflicts.txt)
+5. User notified but sync completes (never block)
+6. Conflicts queued for resolution
+
+### User's Changes Superseded
+1. User edited `Foo.bar` offline
+2. Meanwhile, someone else deleted `Foo.bar`
+3. Going online reveals conflict
+4. User decides: restore with their version or abandon
+
+## Offline Approval Requests
+
+### Creating Request Offline
+
+1. User edits `Stripe.charge` offline
+2. User submits approval request (queued locally)
+3. Request shows as "pending submission" in UI
+4. When online, request submitted to server
+5. Owner notified
+
+### Queue Shows Status
+
+Approval request states while offline:
+- Draft (local): Not yet submitted, can edit
+- Pending submission: Queued, will submit when online
+- Submitted: Successfully sent to server
+- Failed to submit: Sync error, needs retry
+
+### Editing Queued Requests
+
+Can user edit approval request before it's submitted?
+- Yes: Allow editing while in "pending submission" state
+- No: Once queued, it's locked
+
+## Offline Conflict Resolution
+
+What if user resolves conflict while offline?
+
+### Scenario
+1. User last synced 2 hours ago
+2. Offline, continues editing
+3. User knows conflict will occur (edited same location as teammate)
+4. User pre-emptively chooses resolution strategy
+5. When online, apply pre-chosen resolution
+
+Problem: Conflict might be different than expected (more changes occurred).
+
+Solutions:
+- Optimistic: Apply resolution anyway, detect new conflicts if any
+- Pessimistic: Re-check conflicts when online, ask user to reconfirm
+- Hybrid: If conflict unchanged, apply; if changed, re-prompt
+
+## Sync Indicators and User Feedback
+
+### Visual Indicators
+
+Status Bar:
+- 🟢 Online, synced
+- 🟡 Online, syncing...
+- 🔴 Offline
+- ⚠️ Online, sync failed
+
+File/Item Indicators:
+- ✅ Synced to server
+- 🔄 Pending sync
+- ❌ Sync failed
+- 📝 Local only (not yet synced)
+
+Last Synced Timestamp:
+- "Last synced: 5 minutes ago"
+- "Last synced: 2 hours ago (offline)"
+- "Never synced (created offline)"
+
+### Notifications
+
+When Going Online:
+- "Syncing 12 operations..."
+- "Sync complete. 3 conflicts detected."
+- "Sync failed for 2 operations. View details?"
+
+Sync Errors:
+- "Failed to submit approval request: namespace locked"
+- "Failed to push ops: conflicts detected"
+- "Retry" and "View details" actions
+
+## Offline Collaboration
+
+### Shared Offline Work
+
+Can two users work offline on same code and sync later?
+
+Scenario:
+1. Alice and Bob work on same branch
+2. Both offline at conference
+3. Both edit `Foo.bar` differently
+4. Both go online and sync
+
+Outcome:
+- Both push their ops
+- Conflicts detected on server or during sync
+- Conflicts queued for resolution (never block)
+- Next merge requires conflict resolution
+
+### Branch Merge Offline
+
+Can user merge branch while offline?
+
+Yes, if no conflicts:
+- All ops are local, can detect conflicts locally
+- If no conflicts, merge proceeds
+- Merged ops queued to push when online
+
+If conflicts detected locally:
+- Conflicts shown to user
+- User resolves offline
+- Resolution queued for sync
+
+## Network Resilience
+
+### Intermittent Connectivity
+
+What if connection drops during sync?
+
+Partial Sync:
+- Some ops pushed, some not
+- Track which ops succeeded
+- Resume from failure point
+- Don't re-push successful ops
+
+Atomic Operations:
+- Some operations must be atomic (e.g., approval request)
+- Use transactions or mark as "in progress"
+- Rollback on failure
+- Retry entire operation
+
+### Sync Strategies
+
+Eager Sync:
+- Attempt sync immediately when operation queued
+- Retry periodically if offline
+- Real-time when online
+
+Lazy Sync:
+- Queue operations
+- Sync only when user triggers (manual sync button)
+- Less network traffic but more stale data
+
+Periodic Sync:
+- Auto-sync every N minutes
+- Balance between real-time and manual
+- Configurable interval
+
+## Local Database
+
+What data is stored locally for offline operation?
+
+### Essential Data
+- All PackageOps previously synced (approved content)
+- User's own pending ops (not yet synced)
+- Current branch state
+- Name resolution cache
+- Queue of operations to sync
+
+### Optional Data
+- Full history (for reverting)
+- Other users' pending proposals (if previously viewed)
+- Comments and discussions
+
+### Storage Limits
+- Cache may be limited by disk space
+- Least recently used data evicted
+- Essential data always kept
+- Full sync option to re-download everything
+
+## Key Questions to Decide
+
+1. Should approval requests be editable while queued for submission?
+2. How long do we retry failed sync operations before giving up?
+3. Can user manually reorder sync queue (prioritize certain ops)?
+4. Should we support "discard queue" to abandon offline work?
+5. How do we handle time-sensitive operations (e.g., conflict resolution stale after 1 week)?
+6. Should sync be eager, lazy, or periodic by default?
+7. How much local storage do we use for offline cache?
+8. Can user choose what to cache for offline use (specific namespaces)?
+9. Should we support manual conflict resolution queueing (user resolves before syncing)?
+10. What happens if local database corrupted - can we recover from server?
+
+## Edge Cases
+
+### Clock Skew
+- User's machine clock wrong
+- Timestamps on offline ops incorrect
+- Server rejects ops with future timestamps?
+- Or server trusts client timestamps?
+
+### Very Long Offline Period
+- User offline for 1 month
+- Massive upstream changes
+- Sync brings hundreds of conflicts
+- UI overwhelmed?
+- Batch conflict resolution UI needed
+
+### Offline Then Account Suspended
+- User works offline
+- Meanwhile, account suspended or access revoked
+- Tries to sync
+- All operations rejected
+- Lost work or can export locally?
+
+### Disk Full During Offline Work
+- Cannot queue more operations
+- Cannot save more edits
+- Need to alert user before failure
+- Graceful degradation
+
+## Implementation Plan
+
+### Database Changes
+- Local SQLite database for offline storage
+- `sync_queue` table for queued operations
+- `last_sync` timestamp per namespace/branch
+- Cache of synced ops and content
+
+### Backend (F#)
+- Endpoints handle offline clients gracefully
+- Accept batch operations (sync multiple ops at once)
+- Return detailed sync results (success/failure per op)
+- Support resumable sync (send offset/checkpoint)
+
+### CLI
+- `darklang sync` - manual sync trigger
+- `darklang sync --status` - show queue status
+- `darklang sync --retry-failed` - retry failed operations
+- `darklang sync --clear-queue` - discard queued operations
+- Show offline indicator in all commands
+
+### VSCode Extension
+- Detect online/offline status (poll server or network events)
+- Background sync worker
+- Sync queue view in sidebar
+- Status bar indicator
+- Notification system for sync events
+- Conflict resolution UI for queued conflicts
+- "Work offline" mode toggle (disable auto-sync)

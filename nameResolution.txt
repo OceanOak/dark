@@ -1,0 +1,320 @@
+# Name Resolution - Overview
+
+## The Problem
+When code references `Stripe.charge`, the system needs to:
+- Look up what content (item_id/hash) that name points to
+- Respect approval states (only show approved by default)
+- Handle version pinning and updates
+- Notify users of breaking changes
+- Keep existing code working when upstream changes
+
+## Core Architecture: Content vs Naming
+
+**Content (Immutable, Hash-Addressed)**
+- `AddFn(id=abc123, body=..., params=...)` - Creates the actual function content
+- Content is immutable and identified by hash/UUID
+- Multiple names can point to same content
+- Content exists forever (until GC'd), even if unnamed
+
+**Naming (Mutable, Needs Approval)**
+- `SetFnName(id=abc123, location=Stripe.charge)` - Creates a name pointing to content
+- Namings are what get approved/rejected
+- Same location can point to different content over time
+- Approval states apply to namings, not content
+
+### Content Scope: Global vs Branch-Specific
+
+When working with branches, where does content live?
+
+**Option A: Content is Global**
+- Content exists globally, shared across all branches
+- Only namings are branch-specific
+- If I create `AddFn(id=abc123)` on branch, it's immediately accessible by hash on any branch
+- Pros: Efficient, easy reuse of content across branches
+- Cons: Content "pollution" if branch abandoned
+
+**Option B: Content is Branch-Scoped**
+- Both content and namings are branch-specific
+- `AddFn` on branch 'feature-x' only exists in that branch until merged
+- Content becomes global when branch merged to main
+- Pros: Clean separation between branches
+- Cons: Can't reference content across branches, more duplication
+
+**Note**: Since content is immutable and hash-addressed, Option A and B are functionally similar - creating new content on a branch just creates a new hash, whether that hash is "global" or "branch-scoped" doesn't change much about how it works.
+
+## How Name Resolution Works
+
+### Basic Flow
+When you type `Stripe.charge` in code:
+
+1. **Parse time**: Parser sees identifier `Stripe.charge`
+2. **Name resolution**: Looks up "Stripe.charge" in locations/namings table
+3. **Find item_id**: Gets the UUID/hash of the content it points to
+4. **Store in AST**: AST stores the UUID, not the name
+5. **Resolved**: Name is resolved to concrete content reference
+
+**Critical insight**: Once resolved, the AST contains the UUID. That UUID never changes unless you re-save the code.
+
+### What This Means for Updates
+
+**Question**: "What happens to 100 users using old version when Stripe.charge updates?"
+
+**Answer**: NOTHING! They keep using the old version because:
+- Their AST contains `item_id=abc123` (old version)
+- Name resolution already happened when they saved their code
+- New version has `item_id=def456` but doesn't affect existing references
+- Users continue using old version until they explicitly update
+
+## Approval States and Visibility
+
+When resolving `Stripe.charge`, which version do we get?
+
+### Default Behavior: APPROVED Only
+- Name resolution only returns ops with `status='approved'`
+- Latest approved version is what you get
+- Pending/unapproved versions are invisible
+
+### User's Own Pending: Visible to Creator
+- If YOU have pending changes to `Stripe.charge`, YOU can see them
+- Query: `status='approved' OR (status='pending' AND created_by=current_user)`
+- Others still see approved version
+- Allows testing your own changes before approval
+
+### Branch Context: Branch-Specific Names
+- When on branch 'feature-x', name resolution includes branch ops
+- Query: `(branch_id='feature-x' OR branch_id=NULL) AND (status='approved' OR ...)`
+- Branch gets its own view of namings
+
+### Explicit Unapproved Access
+What if user wants to use someone else's unapproved version?
+
+**Option A: Import Pending**
+- `import Stripe.charge (pending)` - opt-in to pending version
+- Requires knowing it exists and explicitly requesting it
+
+**Option B: Hash Reference**
+- `Stripe.charge@def456` - reference by explicit hash
+- Bypasses name resolution, directly uses content
+- Works even if not approved
+
+**Option C: Namespace Prefix**
+- `Stripe.Pending.charge` or `Stripe.Proposed.charge`
+- Separate namespace for unapproved items
+- Clear visual indicator it's unapproved
+
+## Version Pinning and Hash Syntax
+
+### Showing Hash When Not Latest
+
+When code references old version:
+- Display: `Stripe.charge@abc123` in editor
+- Visual indicator: "Update available" warning/icon
+- Clicking shows: "New version available, view diff"
+- User can choose to update or stay pinned
+
+### Explicit Version Pinning
+
+**Syntax Option 1: Hash Reference**
+```
+Stripe.charge@abc123  // Pin to specific hash
+```
+
+**Syntax Option 2: Version Numbers**
+```
+Stripe.charge.v1  // Pin to version 1
+Stripe.charge.v2  // Pin to version 2
+Stripe.charge     // Latest (floating)
+```
+
+**Questions:**
+- Should we support both?
+- How do version numbers map to hashes?
+- Can users pin to "latest v1.x" vs specific hash?
+
+### Auto-Update vs Pin
+
+**Option A: Auto-Float (Default)**
+- Code always uses latest approved version
+- Name resolution happens at save time
+- Staying current is default behavior
+- Risk: breaking changes affect your code
+
+**Option B: Pin on Save (Default)**
+- When you save code, current version hash is locked in
+- Must explicitly update to get new version
+- More stable but can get outdated
+- Like how it works now
+
+**Option C: Hybrid**
+- Non-breaking updates float automatically
+- Breaking changes require explicit update
+- Need semver or breaking change detection
+
+## Breaking Change Notifications
+
+### When Upstream Changes
+
+Scenario: Stripe team updates `Stripe.charge` with breaking change
+
+**Who gets notified?**
+- All users whose code references old version
+- Query AST/references table for `item_id=abc123`
+- Send notification: "Stripe.charge was updated with breaking changes"
+
+**Notification includes:**
+- Diff between old and new version
+- Breaking change description (if provided)
+- Link to update in code
+- "Update now" vs "Review later" options
+
+**User actions:**
+- View diff to understand changes
+- Update reference if compatible
+- Keep old version if not ready
+- Add item to "review later" list
+
+### Breaking Change Detection
+
+How do we know if a change is breaking?
+
+**Option A: Manual Annotation**
+- When proposing change, mark as breaking: yes/no
+- Owner confirms when approving
+- Simple but relies on human judgment
+
+**Option B: Type-Based Detection**
+- Compare function signatures
+- Changed return type = breaking
+- Removed parameter = breaking
+- Added optional parameter = not breaking
+
+**Option C: Semver**
+- Version numbers with semver rules
+- Major bump = breaking, minor = features, patch = fixes
+- Standard but requires version discipline
+
+**Option D: All Changes Are Breaking**
+- Every change triggers notification
+- Users decide if it affects them
+- Safest but noisiest
+
+## Multiple Namings for Same Content
+
+Scenario: 100 people define `type CardSuit = | Hearts | Diamonds | Clubs | Spades`
+
+Problem: Same content (hash), 100 different names
+
+**When pretty-printing, which name to show?**
+
+**Option A: Context-Based**
+- Show the name from current user's namespace
+- Fallback to "most canonical" name (most referenced?)
+- Could be confusing: same code shows different names
+
+**Option B: First/Canonical**
+- First naming created becomes canonical
+- Everyone sees same name
+- Clear but may not be most relevant
+
+**Option C: Show Hash**
+- Display hash/id instead of name when ambiguous
+- `@abc123` instead of picking a name
+- Clearest but less readable
+
+**Option D: Show All**
+- In hover/tooltip, show all names that point to this content
+- Pick primary for display using some heuristic
+- Most informative but complex UI
+
+## Name Resolution in Different Contexts
+
+### In Editor (VSCode)
+- Real-time name resolution as you type
+- Autocomplete shows approved names
+- Hover shows item_id and approval status
+- Warning if referencing old version
+
+### At Runtime
+- AST already has item_id resolved
+- No name lookup needed
+- Fast execution
+
+### In Package Manager
+- Resolving package locations to load code
+- Filter by approval status
+- Branch context matters
+
+### In Diff/Review View
+- Show both old and new item_id
+- Resolve to show actual content for comparison
+- May need to resolve unapproved items
+
+## Key Questions to Decide
+
+1. **Default behavior**: Auto-float to latest or pin on save?
+2. **Hash syntax**: Support `Stripe.charge@abc123`? How about version numbers?
+3. **Unapproved access**: How do users opt-in to use unapproved items?
+4. **Breaking changes**: How to detect? How aggressive with notifications?
+5. **Multiple names, same content**: Which name to display when pretty-printing?
+6. **Branch name resolution**: How do branch namings override main?
+7. **Offline resolution**: Cache resolved names or re-resolve on every load?
+8. **Name conflicts**: What if two approved namings point to same location? (Shouldn't happen but needs handling)
+
+## Edge Cases
+
+### Name Deleted Upstream
+- Code references `Stripe.charge@abc123`
+- Stripe deletes the name `Stripe.charge`
+- Content still exists, reference still works
+- Show warning: "This name no longer exists upstream"
+
+### Circular References
+- `Foo.bar` references `Baz.qux`
+- `Baz.qux` references `Foo.bar`
+- Name resolution needs cycle detection
+- Error or lazy resolution?
+
+### Rename Tracking
+- `Stripe.charge` renamed to `Stripe.createCharge`
+- Old references still work (pointing to same content)
+- Should we suggest rename to users?
+- "Stripe.charge was renamed to Stripe.createCharge"
+
+### Same Name, Different Namespaces
+- `MyCompany.Stripe.charge` vs `Stripe.charge`
+- Name resolution needs to be unambiguous
+- Always use fully qualified names
+
+## Implementation Plan
+
+### Database Changes
+- `locations` or `namings` table: maps location to item_id
+  - Columns: location (string), item_id (UUID), status (approved/pending/etc), branch_id, created_by, created_at
+- `references` table: tracks which code references which item_ids
+  - Columns: referencing_item_id, referenced_item_id, location_used
+  - Enables "find all usages" and breaking change notifications
+- Add `pinned_version` field to references (optional)
+
+### Backend (F#)
+- Name resolution function: `resolveLocation : Location -> BranchID -> AccountID -> Option<ItemID>`
+- Apply filters for approval status and branch context
+- Track references when resolving names
+- Add endpoint: `GET /resolve/:location` for IDE
+- Add endpoint: `GET /references/:item_id` for "find usages"
+- Breaking change notification system
+
+### CLI
+- `darklang outdated` - list references to old versions
+- `darklang update <location>` - update specific reference to latest
+- `darklang update --all` - update all outdated references
+- `darklang references <location>` - find all usages of a name
+- Show hash in output: "Using Stripe.charge@abc123 (update available)"
+
+### VSCode Extension
+- Real-time name resolution for autocomplete
+- Show hash on hover: "Stripe.charge → @abc123 (latest: @def456)"
+- Warning squiggle for outdated references
+- Code action: "Update to latest version"
+- Notification: "3 dependencies have breaking changes"
+- Diff view for comparing old vs new version
+- "Update available" icon/indicator in gutter
