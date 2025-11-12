@@ -149,13 +149,16 @@ export class PackagesTreeDataProvider implements vscode.TreeDataProvider<Node> {
       contextValue,
     );
 
-    // Set contextValue for modules (directories) to enable context menu
-    // Only set if there's no existing contextValue (which would be a packagePath for entities)
-    // Skip owners
+    // Set contextValue for directories to enable context menu
     const isRootLevel = !item.id.includes(".");
-    if (type === "directory" && !item.contextValue && !isRootLevel) {
-      node.contextValue = "module";
-      node.tooltip = `${item.label} - Right-click to open full module`;
+    if (type === "directory" && !item.contextValue) {
+      if (isRootLevel) {
+        node.contextValue = "package-owner";
+        node.tooltip = `${item.label} - Right-click to create new module`;
+      } else {
+        node.contextValue = "module";
+        node.tooltip = `${item.label} - Right-click to open full module`;
+      }
     }
 
     return node;

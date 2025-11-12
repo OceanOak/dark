@@ -19,6 +19,13 @@
   "main": "./client/out/extension",
   "contributes": {
     "keybindings": [
+      {
+        "command": "darklang.newVirtualFile",
+        "key": "cmd+alt+n",
+        "mac": "cmd+alt+n",
+        "win": "ctrl+alt+n",
+        "linux": "ctrl+alt+n"
+      }
     ],
     "languages": [
       {
@@ -101,6 +108,10 @@
         "title": "Show Op Diff"
       },
       {
+        "command": "darklang.newVirtualFile",
+        "title": "Darklang: New Virtual File"
+      },
+      {
         "command": "darklang.branch.new",
         "title": "Start New Branch",
         "icon": "$(add)"
@@ -176,6 +187,11 @@
     ],
     "menus": {
 			"view/item/context": [
+        {
+					"command": "darklang.newVirtualFile",
+					"when": "view == darklangPackages && viewItem == package-owner",
+					"group": "navigation"
+				},
         {
 					"command": "darklang.openFullModule",
 					"when": "view == darklangPackages && viewItem == module",
