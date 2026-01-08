@@ -1,4 +1,4 @@
-module internal LibParser.Package
+module LibParser.Package
 
 open FSharp.Compiler.Syntax
 

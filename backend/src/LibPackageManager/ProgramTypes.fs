@@ -314,15 +314,23 @@ let search
         then
           match query.searchDepth with
           | PT.Search.SearchDepth.OnlyDirectDescendants ->
-            // At root with OnlyDirectDescendants - search for owners that match the text
-            ("""(owner LIKE '%' || @searchText || '%')""",
-             [ "searchText", Sql.string query.text ])
+            // At root with OnlyDirectDescendants - list all or filter by text
+            if System.String.IsNullOrEmpty query.text then
+              // No text filter - show all owners
+              ("(1 = 1)", [])
+            else
+              // Filter owners by text
+              ("""(owner LIKE '%' || @searchText || '%')""",
+               [ "searchText", Sql.string query.text ])
           | PT.Search.SearchDepth.AllDescendants ->
             // At root with AllDescendants - search all modules recursively
-            ("""((owner LIKE '%' || @searchText || '%')
-                  OR (modules LIKE '%' || @searchText || '%')
-                  OR (owner || '.' || modules LIKE '%' || @searchText || '%'))""",
-             [ "searchText", Sql.string query.text ])
+            if System.String.IsNullOrEmpty query.text then
+              ("(1 = 1)", [])
+            else
+              ("""((owner LIKE '%' || @searchText || '%')
+                    OR (modules LIKE '%' || @searchText || '%')
+                    OR (owner || '.' || modules LIKE '%' || @searchText || '%'))""",
+               [ "searchText", Sql.string query.text ])
         else
           // Not at root - fuzzy logic with depth control
           let directChildPattern = currentModule + ".%"

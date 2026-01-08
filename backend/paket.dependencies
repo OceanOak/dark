@@ -37,3 +37,6 @@ nuget Sodium.Core = 1.3.4
 
 // LocalExec
 nuget Legivel = 0.4.6
+
+// CLI
+nuget Terminal.Gui = 2.0.0
