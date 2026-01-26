@@ -9,6 +9,10 @@ import subprocess
 import sys
 import threading
 import signal
+import os
+
+# Get root directory from environment variable, fallback to default
+ROOT_DIR = os.environ.get("DARK_CONFIG_ROOT_DIR", "/home/dark/app")
 
 run_tests = False
 
@@ -145,9 +149,9 @@ def main():
   if should_watch:
     import watchfiles
     ignored = [ ".git", "backend/Build" ]
-    ignored = set(["/home/dark/app/" + f for f in ignored])
+    ignored = set([ROOT_DIR + "/" + f for f in ignored])
     filter = watchfiles.DefaultFilter(ignore_paths=ignored)
-    for changes in watchfiles.watch("/home/dark/app/", watch_filter=filter):
+    for changes in watchfiles.watch(ROOT_DIR + "/", watch_filter=filter):
       changes = [f for (_, f) in changes]
       compile(changes)
 

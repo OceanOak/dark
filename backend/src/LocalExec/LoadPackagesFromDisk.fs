@@ -19,8 +19,12 @@ let load (builtins : RT.Builtins) : Ply<List<PT.PackageOp>> =
   uply {
     let accountID = None
     let branchId = None
+    let rootDir =
+      match System.Environment.GetEnvironmentVariable("DARK_CONFIG_ROOT_DIR") with
+      | null | "" -> "/home/dark/app"
+      | dir -> dir
     let filesWithContents =
-      "/home/dark/app/packages"
+      $"{rootDir}/packages"
       |> listDirectoryRecursive
       |> List.filter (String.contains "_" >> not)
       |> List.filter (fun x -> x |> String.endsWith ".dark")

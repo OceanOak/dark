@@ -24,7 +24,8 @@ log "Fetching and building tree-sitter library"
 
 log "Starting build server"
 
-git config --global --add safe.directory /home/dark/app
+ROOT_DIR="${DARK_CONFIG_ROOT_DIR:-/home/dark/app}"
+git config --global --add safe.directory "$ROOT_DIR"
 
 nohup ./scripts/build/_build-server --compile --watch &>> "$LOG_FILE" &
 

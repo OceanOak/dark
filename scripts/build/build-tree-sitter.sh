@@ -17,7 +17,9 @@
 cd ~/ || exit
 
 # Base output directory for compiled libraries
-output_base_dir="app/backend/src/LibTreeSitter/lib"
+# Use DARK_CONFIG_ROOT_DIR if set, otherwise fallback to default
+ROOT_DIR="${DARK_CONFIG_ROOT_DIR:-/home/dark/app}"
+output_base_dir="${ROOT_DIR}/backend/src/LibTreeSitter/lib"
 
 # Check if target artifacts already exist
 if [[ -f "$output_base_dir/tree-sitter.so" && \

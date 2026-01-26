@@ -9,7 +9,9 @@
 -->
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <DarkBuildDir>/home/dark/app/backend/Build</DarkBuildDir>
+    <!-- Use DARK_CONFIG_ROOT_DIR env var if set, otherwise fallback to default -->
+    <DarkBuildDir Condition="'$(DARK_CONFIG_ROOT_DIR)' != ''">$(DARK_CONFIG_ROOT_DIR)/backend/Build</DarkBuildDir>
+    <DarkBuildDir Condition="'$(DARK_CONFIG_ROOT_DIR)' == ''">/home/dark/app/backend/Build</DarkBuildDir>
     <BaseOutputPath>$(DarkBuildDir)/out/$(MSBuildProjectName)</BaseOutputPath>
     <BaseIntermediateOutputPath>$(DarkBuildDir)/obj/$(MSBuildProjectName)</BaseIntermediateOutputPath>
     <GenerateDocumentation>false</GenerateDocumentation>

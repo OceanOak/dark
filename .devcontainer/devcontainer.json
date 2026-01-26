@@ -14,7 +14,7 @@
         "FSharp.dotNetRoot": "/usr/share/dotnet",
         "FSharp.useSdkScripts": true,
         "FSharp.workspaceModePeekDeepLevel": 5,
-        "FSharp.workspacePath": "/home/dark/app/backend/fsdark.sln",
+        "FSharp.workspacePath": "${workspaceFolder}/backend/fsdark.sln",
         "remote.containers.cacheVolume": true,
         "remote.containers.workspaceMountConsistency": "delegated",
         "editor.tabSize": 2,
@@ -44,7 +44,9 @@
   "forwardPorts": [10011, 10012, 10030, 11001, 11002],
 
   "containerEnv": {
-    "IN_DEV_CONTAINER": "true"
+    "IN_DEV_CONTAINER": "true",
+    "DARK_CONFIG_ROOT_DIR": "/home/dark/repos/${localWorkspaceFolderBasename}",
+    "DARK_CONFIG_RUNDIR": "/home/dark/repos/${localWorkspaceFolderBasename}/rundir"
   },
 
   "runArgs": [
@@ -64,15 +66,13 @@
     "--security-opt",
     "seccomp=unconfined",
     "--label",
-    "dark-dev-container",
-    "--workdir",
-    "/home/dark/app"
+    "dark-dev-container"
   ],
 
-  "workspaceMount": "source=${localWorkspaceFolder},target=/home/dark/app,type=bind,consistency=delegated", // for local
-  // If using a remote DOCKER_HOST, you need to mount a directory on the remote host
-  // "workspaceMount": "source=/home/paulbiggar/projects/dark,target=/home/dark/app,type=bind,consistency=delegated",
-  "workspaceFolder": "/home/dark/app",
+  // Mount parent directory so git worktree relative paths resolve correctly
+  // Convention: main repo must be named "dark", worktrees must be siblings named "dark-<branch>"
+  "workspaceMount": "source=${localWorkspaceFolder}/..,target=/home/dark/repos,type=bind,consistency=delegated",
+  "workspaceFolder": "/home/dark/repos/${localWorkspaceFolderBasename}",
 
   "mounts": [
     // Docker-in-Docker - uncomment this to be able to build Dark's production containers
@@ -83,15 +83,15 @@
     // If using a remote DOCKER_HOST, you need to mount a directory on the remote host instead
     // "type=bind,src=/home/paulbiggar/.dark_bash_history,dst=/home/dark/.bash_history,consistency=cached",
 
-    // Build directories
-    "type=volume,src=dark_build,dst=/home/dark/app/backend/Build",
-    "type=volume,src=dark_nuget,dst=/home/dark/.nuget",
+    // Build directories - use ${localWorkspaceFolderBasename} for worktree isolation
+    "type=volume,src=dark_build_${localWorkspaceFolderBasename},dst=/home/dark/repos/${localWorkspaceFolderBasename}/backend/Build",
+    "type=volume,src=dark_nuget_${localWorkspaceFolderBasename},dst=/home/dark/.nuget",
 
-    // Tree-sitter
-    "type=volume,src=tree-sitter-build,dst=/home/dark/tree-sitter-darklang/build",
-    "type=volume,src=tree-sitter-node-modules,dst=/home/dark/tree-sitter-darklang/node_modules",
+    // Tree-sitter - isolated per worktree
+    "type=volume,src=tree-sitter-build_${localWorkspaceFolderBasename},dst=/home/dark/repos/${localWorkspaceFolderBasename}/tree-sitter-darklang/build",
+    "type=volume,src=tree-sitter-node-modules_${localWorkspaceFolderBasename},dst=/home/dark/repos/${localWorkspaceFolderBasename}/tree-sitter-darklang/node_modules",
 
-    // VS Code extensions
+    // VS Code extensions - shared across worktrees (no isolation needed)
     "type=volume,src=darklang-dark-extension-volume,dst=/home/dark/.vscode-server/extensions",
     "type=volume,src=darklang-dark-extension-volume-insiders,dst=/home/dark/.vscode-server-insiders/extensions"
   ],

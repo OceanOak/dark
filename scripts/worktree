@@ -1,0 +1,52 @@
+#!/bin/bash
+# Usage: worktree <branch-name>
+# Creates a git worktree for the given branch and opens it in VS Code
+# Uses relative paths so worktrees work inside devcontainers
+
+set -euo pipefail
+
+if [ $# -eq 0 ]; then
+    echo "Usage: worktree <branch-name>"
+    echo "Creates a git worktree and opens it in VS Code"
+    exit 1
+fi
+
+BRANCH="$1"
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_NAME="$(basename "$REPO_ROOT")"
+WORKTREE_DIR="$REPO_ROOT/../${REPO_NAME}-${BRANCH}"
+WORKTREE_BASENAME="${REPO_NAME}-${BRANCH}"
+
+# Check if worktree already exists
+if [ -d "$WORKTREE_DIR" ]; then
+    echo "Worktree already exists at $WORKTREE_DIR"
+    echo "Opening in VS Code..."
+    code "$WORKTREE_DIR"
+    exit 0
+fi
+
+# Check if branch exists locally or remotely
+if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
+    echo "Creating worktree for existing branch '$BRANCH'..."
+    git worktree add "$WORKTREE_DIR" "$BRANCH"
+elif git show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+    echo "Creating worktree for remote branch 'origin/$BRANCH'..."
+    git worktree add "$WORKTREE_DIR" "$BRANCH"
+else
+    echo "Creating worktree with new branch '$BRANCH'..."
+    git worktree add -b "$BRANCH" "$WORKTREE_DIR"
+fi
+
+# Convert to relative paths for devcontainer compatibility
+# This makes the worktree work both on host and inside containers
+echo "Converting to relative paths for devcontainer support..."
+
+# Fix the worktree's .git file (points to main repo)
+echo "gitdir: ../${REPO_NAME}/.git/worktrees/${WORKTREE_BASENAME}" > "$WORKTREE_DIR/.git"
+
+# Fix the main repo's gitdir file (points back to worktree)
+echo "../../../${WORKTREE_BASENAME}" > "$REPO_ROOT/.git/worktrees/${WORKTREE_BASENAME}/gitdir"
+
+echo "Worktree created at $WORKTREE_DIR"
+echo "Opening in VS Code..."
+code "$WORKTREE_DIR"

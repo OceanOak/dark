@@ -12,6 +12,9 @@ run_tests = False
 in_ci = os.getenv("CI") == "true"
 optimize = in_ci
 
+# Get root directory from environment variable, fallback to default
+ROOT_DIR = os.environ.get("DARK_CONFIG_ROOT_DIR", "/home/dark/app")
+
 fsharp_things_to_build = ["fsdark.sln"]
 # sometimes it's handy to only build one or more specific projects
 #fsharp_things_to_build = ["src/Cli", "src/LocalExec"]
@@ -411,7 +414,7 @@ def main():
       global optimize
       optimize = True
     else:
-      f = os.path.relpath(f, "/home/dark/app")
+      f = os.path.relpath(f, ROOT_DIR)
       if not (ignored_files.match_file(f)):
         files.append(f)
 
