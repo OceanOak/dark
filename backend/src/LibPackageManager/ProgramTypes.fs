@@ -519,3 +519,43 @@ let search
 
     return { submodules = submodules; types = types; values = values; fns = fns }
   }
+
+
+/// Check if a location has any deprecated previous versions (with a different item_id)
+/// This is used to determine if a SetName op is an "update" vs a new "add"
+let hasPreviousVersion
+  (branchID : Option<PT.BranchID>)
+  (itemId : uuid)
+  (location : PT.PackageLocation)
+  (itemType : string)
+  : Ply<bool> =
+  uply {
+    let modulesStr = String.concat "." location.modules
+
+    let! count =
+      Sql.query
+        """
+        SELECT COUNT(*) as cnt
+        FROM locations
+        WHERE owner = @owner
+          AND modules = @modules
+          AND name = @name
+          AND item_type = @item_type
+          AND deprecated_at IS NOT NULL
+          AND item_id != @item_id
+          AND (branch_id IS NULL OR branch_id = @branch_id)
+        """
+      |> Sql.parameters
+        [ "owner", Sql.string location.owner
+          "modules", Sql.string modulesStr
+          "name", Sql.string location.name
+          "item_type", Sql.string itemType
+          "item_id", Sql.uuid itemId
+          "branch_id",
+          (match branchID with
+           | Some id -> Sql.uuid id
+           | None -> Sql.dbnull) ]
+      |> Sql.executeRowAsync (fun read -> read.int64 "cnt")
+
+    return count > 0L
+  }

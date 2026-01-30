@@ -319,6 +319,36 @@ let fns (pm : PT.PackageManager) : List<BuiltInFn> =
         | _ -> incorrectArgs ())
       sqlSpec = NotQueryable
       previewable = Impure
+      deprecated = NotDeprecated }
+
+
+    // Check if a location has previous (deprecated) versions
+    { name = fn "pmHasPreviousVersion" 0
+      typeParams = []
+      parameters =
+        [ Param.make "branchID" (TypeReference.option TUuid) ""
+          Param.make "itemId" TUuid "The current item's ID"
+          Param.make
+            "location"
+            (TCustomType(Ok PT2DT.PackageLocation.typeName, []))
+            ""
+          Param.make "itemType" TString "One of: fn, type, value" ]
+      returnType = TBool
+      description =
+        "Returns true if the given location has any deprecated previous versions with a different item_id (indicating an update vs a new add)"
+      fn =
+        (function
+        | _, _, _, [ branchID; DUuid itemId; location; DString itemType ] ->
+          uply {
+            let branchID = C2DT.Option.fromDT D.uuid branchID
+            let location = PT2DT.PackageLocation.fromDT location
+            let! result =
+              LibPackageManager.ProgramTypes.hasPreviousVersion branchID itemId location itemType
+            return DBool result
+          }
+        | _ -> incorrectArgs ())
+      sqlSpec = NotQueryable
+      previewable = Impure
       deprecated = NotDeprecated } ]
 
 

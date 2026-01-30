@@ -60,9 +60,13 @@ let execute (state: Cli.AppState) (args: List<String>) : Cli.AppState =
       | Ok branch ->
         Stdlib.printLine $"Created and switched to branch: {name}"
 
-        { state with
-            currentBranchId = Stdlib.Option.Option.Some branch.id
-            needsFullRedraw = true }
+        let newState =
+          { state with
+              currentBranchId = Stdlib.Option.Option.Some branch.id
+              needsFullRedraw = true }
+
+        Cli.SessionState.updateFromAppState newState
+        newState
       | Error errMsg ->
         Stdlib.printLine (Colors.error $"{errMsg}. Use 'branch switch {name}' to switch to it.")
         state
@@ -83,9 +87,13 @@ let execute (state: Cli.AppState) (args: List<String>) : Cli.AppState =
       | Some branch ->
         Stdlib.printLine $"Switched to branch: {name}"
 
-        { state with
-            currentBranchId = Stdlib.Option.Option.Some branch.id
-            needsFullRedraw = true }
+        let newState =
+          { state with
+              currentBranchId = Stdlib.Option.Option.Some branch.id
+              needsFullRedraw = true }
+
+        Cli.SessionState.updateFromAppState newState
+        newState
 
   | ["switch-id"; branchIdStr] ->
     match Stdlib.Uuid.parse branchIdStr with
@@ -96,9 +104,13 @@ let execute (state: Cli.AppState) (args: List<String>) : Cli.AppState =
       | Some b ->
         Stdlib.printLine $"Switched to branch: {b.name}"
 
-        { state with
-            currentBranchId = Stdlib.Option.Option.Some b.id
-            needsFullRedraw = true }
+        let newState =
+          { state with
+              currentBranchId = Stdlib.Option.Option.Some b.id
+              needsFullRedraw = true }
+
+        Cli.SessionState.updateFromAppState newState
+        newState
 
       | None ->
         Stdlib.printLine (Colors.error $"Branch not found: {branchIdStr}")
@@ -163,9 +175,13 @@ let execute (state: Cli.AppState) (args: List<String>) : Cli.AppState =
   | ["none"] ->
     Stdlib.printLine "Cleared current branch (now searching all packages)"
 
-    { state with
-        currentBranchId = Stdlib.Option.Option.None
-        needsFullRedraw = true }
+    let newState =
+      { state with
+          currentBranchId = Stdlib.Option.Option.None
+          needsFullRedraw = true }
+
+    Cli.SessionState.updateFromAppState newState
+    newState
 
   | _ ->
     Stdlib.printLine (Colors.error "Unknown branch command")

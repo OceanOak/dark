@@ -162,6 +162,31 @@ let private applySetName
            | None -> Sql.dbnull) ]
       |> Sql.executeStatementAsync
 
+    // Also deprecate any existing location with the same name in this branch
+    // (handles updates: same name points to new definition, old definition becomes orphaned)
+    do!
+      Sql.query
+        """
+        UPDATE locations
+        SET deprecated_at = datetime('now')
+        WHERE owner = @owner
+          AND modules = @modules
+          AND name = @name
+          AND item_type = @item_type
+          AND deprecated_at IS NULL
+          AND (branch_id = @branch_id OR (branch_id IS NULL AND @branch_id IS NULL))
+        """
+      |> Sql.parameters
+        [ "owner", Sql.string location.owner
+          "modules", Sql.string modulesStr
+          "name", Sql.string location.name
+          "item_type", Sql.string itemType
+          "branch_id",
+          (match branchID with
+           | Some id -> Sql.uuid id
+           | None -> Sql.dbnull) ]
+      |> Sql.executeStatementAsync
+
     // New items start as pending unless they're built-in packages loaded from disk.
     // Users must explicitly approve their changes before they become visible.
     let approvalStatus =

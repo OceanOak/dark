@@ -1,0 +1,1346 @@
+// Agent Activity Dashboard
+// Real-time visualization of agent activity showing package operations
+
+// Response type for ops API
+type OpResponse =
+  { opType: String
+    icon: String
+    color: String
+    name: String
+    owner: String
+    modules: String
+    entityId: String }
+
+// Response type for stats API
+type StatsResponse =
+  { types: Int64
+    fns: Int64
+    values: Int64 }
+
+// Response type for branch listing
+type BranchResponse =
+  { id: String
+    name: String }
+
+// Response type for accounts listing
+type AccountResponse =
+  { id: String
+    name: String }
+
+// Response type for diff view with pretty printed code
+type DiffItem =
+  { opType: String
+    icon: String
+    color: String
+    name: String
+    prettyCode: String
+    entityId: String
+    changeType: String }
+
+// Response type for dependency info
+type DepItem =
+  { id: String
+    name: String
+    refType: String }
+
+type DepsResponse =
+  { uses: List<DepItem>
+    usedBy: List<DepItem> }
+
+
+// Convert a PackageOp to an OpResponse for JSON serialization
+// Note: AddFn/AddType/AddValue contain just UUIDs, so we show SetFnName/SetTypeName/SetValueName
+// which contain the actual location information
+let opToResponse
+  (op: LanguageTools.ProgramTypes.PackageOp)
+  : Stdlib.Option.Option<OpResponse> =
+  match op with
+  | SetFnName(id, loc) ->
+    let mods = Stdlib.String.join loc.modules "."
+
+    Stdlib.Option.Option.Some(
+      OpResponse
+        { opType = "AddFn"
+          icon = "λ"
+          color = "#3b82f6"
+          name = loc.name
+          owner = loc.owner
+          modules = mods
+          entityId = Stdlib.Uuid.toString id })
+
+  | SetTypeName(id, loc) ->
+    let mods = Stdlib.String.join loc.modules "."
+
+    Stdlib.Option.Option.Some(
+      OpResponse
+        { opType = "AddType"
+          icon = "{ }"
+          color = "#a855f7"
+          name = loc.name
+          owner = loc.owner
+          modules = mods
+          entityId = Stdlib.Uuid.toString id })
+
+  | SetValueName(id, loc) ->
+    let mods = Stdlib.String.join loc.modules "."
+
+    Stdlib.Option.Option.Some(
+      OpResponse
+        { opType = "AddValue"
+          icon = "="
+          color = "#22c55e"
+          name = loc.name
+          owner = loc.owner
+          modules = mods
+          entityId = Stdlib.Uuid.toString id })
+
+  | AddFn _ -> Stdlib.Option.Option.None
+  | AddType _ -> Stdlib.Option.Option.None
+  | AddValue _ -> Stdlib.Option.Option.None
+  | ApproveItem(_, _, _) -> Stdlib.Option.Option.None
+  | RejectItem(_, _, _, _) -> Stdlib.Option.Option.None
+  | RequestNamingApproval(_, _, _, _, _, _, _) -> Stdlib.Option.Option.None
+  | WithdrawApprovalRequest(_, _) -> Stdlib.Option.Option.None
+  | RequestChanges(_, _, _, _) -> Stdlib.Option.Option.None
+
+
+// Helper to extract query param
+let extractQueryParam
+  (params: List<String * String>)
+  (key: String)
+  : Stdlib.Option.Option<String> =
+  params
+  |> Stdlib.List.findFirst (fun pair ->
+    match pair with
+    | (k, _v) -> k == key)
+  |> Stdlib.Option.map (fun pair ->
+    match pair with
+    | (_k, v) -> v)
+
+
+// Convert ops to diff items with pretty printed code
+// Shows function signatures, type definitions, and value names
+// Only shows Set*Name ops (not Add* ops) to avoid duplicates and get full paths
+let opToDiffItem
+  (accountID: Stdlib.Option.Option<Uuid>)
+  (branchID: Stdlib.Option.Option<Uuid>)
+  (op: LanguageTools.ProgramTypes.PackageOp)
+  : Stdlib.Option.Option<DiffItem> =
+  let none = Stdlib.Option.Option.None
+
+  let ctx =
+    Darklang.PrettyPrinter.ProgramTypes.Context
+      { accountID = accountID
+        branchID = branchID
+        currentModule = Stdlib.Option.Option.None
+        currentFunction = Stdlib.Option.Option.None }
+
+  match op with
+  // Skip Add* ops - Set*Name ops have proper paths
+  | AddFn _ -> none
+  | AddType _ -> none
+  | AddValue _ -> none
+
+  | SetFnName(id, loc) ->
+    let path =
+      Darklang.PrettyPrinter.ProgramTypes.PackageLocation.packageLocation loc
+
+    // Check if this is an update (has deprecated previous versions with different item_id)
+    let isUpdate = Builtin.pmHasPreviousVersion branchID id loc "fn"
+    let changeType = if isUpdate then "updated" else "added"
+
+    // Try to get function signature
+    match Builtin.pmGetFn id with
+    | Some fn ->
+      let fnSig =
+        Darklang.PrettyPrinter.ProgramTypes.PackageFn.signature
+          accountID
+          branchID
+          fn
+
+      Stdlib.Option.Option.Some(
+        DiffItem
+          { opType = "fn"
+            icon = "λ"
+            color = "#3b82f6"
+            name = "function"
+            prettyCode = $"let {path}: {fnSig}"
+            entityId = Stdlib.Uuid.toString id
+            changeType = changeType })
+    | None ->
+      Stdlib.Option.Option.Some(
+        DiffItem
+          { opType = "fn"
+            icon = "λ"
+            color = "#3b82f6"
+            name = "function"
+            prettyCode = $"let {path}"
+            entityId = Stdlib.Uuid.toString id
+            changeType = changeType })
+
+  | SetTypeName(id, loc) ->
+    let path =
+      Darklang.PrettyPrinter.ProgramTypes.PackageLocation.packageLocation loc
+
+    // Check if this is an update (has deprecated previous versions with different item_id)
+    let isUpdate = Builtin.pmHasPreviousVersion branchID id loc "type"
+    let changeType = if isUpdate then "updated" else "added"
+
+    // Try to get type definition
+    match Builtin.pmGetType id with
+    | Some typ ->
+      let def =
+        Darklang.PrettyPrinter.ProgramTypes.customType accountID branchID typ.declaration
+
+      Stdlib.Option.Option.Some(
+        DiffItem
+          { opType = "type"
+            icon = "{ }"
+            color = "#a855f7"
+            name = "type"
+            prettyCode = $"type {path} = {def}"
+            entityId = Stdlib.Uuid.toString id
+            changeType = changeType })
+    | None ->
+      Stdlib.Option.Option.Some(
+        DiffItem
+          { opType = "type"
+            icon = "{ }"
+            color = "#a855f7"
+            name = "type"
+            prettyCode = $"type {path}"
+            entityId = Stdlib.Uuid.toString id
+            changeType = changeType })
+
+  | SetValueName(id, loc) ->
+    let path =
+      Darklang.PrettyPrinter.ProgramTypes.PackageLocation.packageLocation loc
+
+    // Check if this is an update (has deprecated previous versions with different item_id)
+    let isUpdate = Builtin.pmHasPreviousVersion branchID id loc "value"
+    let changeType = if isUpdate then "updated" else "added"
+
+    // Try to get value body
+    let prettyCode =
+      match Builtin.pmGetValue id with
+      | Some value ->
+        let bodyPart = Darklang.PrettyPrinter.ProgramTypes.expr ctx value.body
+
+        // Check if body looks like a UUID and try to resolve it
+        let resolvedBody =
+          match Stdlib.Uuid.parse bodyPart with
+          | Ok refId ->
+            match Builtin.pmGetLocationByValue accountID branchID refId with
+            | Some refLoc ->
+              Darklang.PrettyPrinter.ProgramTypes.PackageLocation.packageLocation refLoc
+            | None -> bodyPart
+          | Error _ -> bodyPart
+
+        $"let {path} = {resolvedBody}"
+      | None -> $"val {path}"
+
+    Stdlib.Option.Option.Some(
+      DiffItem
+        { opType = "value"
+          icon = "="
+          color = "#22c55e"
+          name = "value"
+          prettyCode = prettyCode
+          entityId = Stdlib.Uuid.toString id
+          changeType = changeType })
+
+  | ApproveItem(_, _, _) -> none
+  | RejectItem(_, _, _, _) -> none
+  | RequestNamingApproval(_, _, _, _, _, _, _) -> none
+  | WithdrawApprovalRequest(_, _) -> none
+  | RequestChanges(_, _, _, _) -> none
+
+
+// API endpoint: Get recent package operations
+// Optional query params: ?branch=<uuid>, ?account=<name>
+[<HttpHandler("GET", "/api/ops")>]
+let _opsHandler (request: Stdlib.Http.Request) =
+  let params = Stdlib.Http.Request.queryParams request
+  let branchParam = extractQueryParam params "branch"
+  let accountParam = extractQueryParam params "account"
+
+  let branchOpt =
+    match branchParam with
+    | Some branchIdStr ->
+      match Stdlib.Uuid.parse branchIdStr with
+      | Ok branchId -> Stdlib.Option.Option.Some branchId
+      | Error _ -> Stdlib.Option.Option.None
+    | None -> Stdlib.Option.Option.None
+
+  let ops =
+    match branchOpt with
+    | Some _ -> Builtin.scmGetRecentOps branchOpt 50L
+    | None -> Builtin.scmGetRecentOpsAllBranches 50L
+
+  let responses = Stdlib.List.filterMap ops (fun op -> opToResponse op)
+
+  // Filter by account name if specified
+  let filteredResponses =
+    match accountParam with
+    | Some accountName ->
+      Stdlib.List.filter responses (fun r -> r.owner == accountName)
+    | None -> responses
+
+  let json = Builtin.jsonSerialize<List<OpResponse>> filteredResponses
+
+  Stdlib.Http.responseWithHeaders
+    (Stdlib.String.toBytes json)
+    [ ("Content-Type", "application/json")
+      ("Access-Control-Allow-Origin", "*") ]
+    200L
+
+
+// API endpoint: Get pretty-printed diffs
+// Optional query params: ?limit=<number>, ?branch=<uuid>, ?account=<uuid>
+[<HttpHandler("GET", "/api/diff")>]
+let _diffHandler (request: Stdlib.Http.Request) =
+  let params = Stdlib.Http.Request.queryParams request
+  let limitParam = extractQueryParam params "limit"
+  let branchParam = extractQueryParam params "branch"
+  let accountParam = extractQueryParam params "account"
+
+  let limit =
+    match limitParam with
+    | Some limitStr ->
+      match Stdlib.Int64.parse limitStr with
+      | Ok n -> n
+      | Error _ -> 10L
+    | None -> 10L
+
+  let accountOpt =
+    match accountParam with
+    | Some accountIdStr ->
+      match Stdlib.Uuid.parse accountIdStr with
+      | Ok accountId -> Stdlib.Option.Option.Some accountId
+      | Error _ -> Stdlib.Option.Option.None
+    | None -> Stdlib.Option.Option.None
+
+  let branchOpt =
+    match branchParam with
+    | Some branchIdStr ->
+      match Stdlib.Uuid.parse branchIdStr with
+      | Ok branchId -> Stdlib.Option.Option.Some branchId
+      | Error _ -> Stdlib.Option.Option.None
+    | None -> Stdlib.Option.Option.None
+
+  let ops =
+    match branchOpt with
+    | Some _ -> Builtin.scmGetRecentOps branchOpt limit
+    | None -> Builtin.scmGetRecentOpsAllBranches limit
+
+  let diffItems =
+    Stdlib.List.filterMap ops (fun op -> opToDiffItem accountOpt branchOpt op)
+  let json = Builtin.jsonSerialize<List<DiffItem>> diffItems
+
+  Stdlib.Http.responseWithHeaders
+    (Stdlib.String.toBytes json)
+    [ ("Content-Type", "application/json")
+      ("Access-Control-Allow-Origin", "*") ]
+    200L
+
+
+// API endpoint: Get package stats
+[<HttpHandler("GET", "/api/stats")>]
+let _statsHandler _req =
+  let stats = Builtin.pmGetStats ()
+
+  let response =
+    StatsResponse
+      { types = stats.types
+        fns = stats.fns
+        values = stats.values }
+
+  let json = Builtin.jsonSerialize<StatsResponse> response
+
+  Stdlib.Http.responseWithHeaders
+    (Stdlib.String.toBytes json)
+    [ ("Content-Type", "application/json")
+      ("Access-Control-Allow-Origin", "*") ]
+    200L
+
+
+// API endpoint: List all accounts
+[<HttpHandler("GET", "/api/accounts")>]
+let _accountsHandler _req =
+  let accountNames = Builtin.pmListAccounts (())
+
+  let responses =
+    accountNames
+    |> Stdlib.List.filterMap (fun name ->
+      match Builtin.pmGetAccountByName name with
+      | Some id ->
+        let idStr = Stdlib.Uuid.toString id
+        Stdlib.Option.Option.Some(AccountResponse { id = idStr; name = name })
+      | None -> Stdlib.Option.Option.None)
+
+  let json = Builtin.jsonSerialize<List<AccountResponse>> responses
+
+  Stdlib.Http.responseWithHeaders
+    (Stdlib.String.toBytes json)
+    [ ("Content-Type", "application/json")
+      ("Access-Control-Allow-Origin", "*") ]
+    200L
+
+
+// API endpoint: List branches for an account
+// Query param: ?account=<uuid>
+[<HttpHandler("GET", "/api/branches")>]
+let _branchesHandler (request: Stdlib.Http.Request) =
+  let params = Stdlib.Http.Request.queryParams request
+  let accountParam = extractQueryParam params "account"
+
+  let branches =
+    match accountParam with
+    | Some accountIdStr ->
+      match Stdlib.Uuid.parse accountIdStr with
+      | Ok accountId ->
+        let branchList = Darklang.SCM.Branch.list accountId
+
+        Stdlib.List.map branchList (fun b ->
+          let idStr = Stdlib.Uuid.toString b.id
+          BranchResponse { id = idStr; name = b.name })
+      | Error _ -> []
+    | None -> []
+
+  let json = Builtin.jsonSerialize<List<BranchResponse>> branches
+
+  Stdlib.Http.responseWithHeaders
+    (Stdlib.String.toBytes json)
+    [ ("Content-Type", "application/json")
+      ("Access-Control-Allow-Origin", "*") ]
+    200L
+
+
+// API endpoint: Get dependencies for an entity
+// Query params: ?id=<uuid>&account=<uuid>&branch=<uuid>
+[<HttpHandler("GET", "/api/deps")>]
+let _depsHandler (request: Stdlib.Http.Request) =
+  let params = Stdlib.Http.Request.queryParams request
+  let idParam = extractQueryParam params "id"
+  let accountParam = extractQueryParam params "account"
+  let branchParam = extractQueryParam params "branch"
+
+  let accountOpt =
+    match accountParam with
+    | Some accountIdStr ->
+      match Stdlib.Uuid.parse accountIdStr with
+      | Ok accountId -> Stdlib.Option.Option.Some accountId
+      | Error _ -> Stdlib.Option.Option.None
+    | None -> Stdlib.Option.Option.None
+
+  let branchOpt =
+    match branchParam with
+    | Some branchIdStr ->
+      match Stdlib.Uuid.parse branchIdStr with
+      | Ok branchId -> Stdlib.Option.Option.Some branchId
+      | Error _ -> Stdlib.Option.Option.None
+    | None -> Stdlib.Option.Option.None
+
+  let response =
+    match idParam with
+    | None ->
+      DepsResponse { uses = []; usedBy = [] }
+    | Some idStr ->
+      match Stdlib.Uuid.parse idStr with
+      | Error _ ->
+        DepsResponse { uses = []; usedBy = [] }
+      | Ok entityId ->
+        // Get what this entity uses (dependencies)
+        let usesList = Builtin.dependenciesGetDependencies entityId
+
+        let usesIds = usesList |> Stdlib.List.map (fun pair ->
+          let (id, _refType) = pair
+          id)
+
+        let usesNames = Builtin.dependenciesResolveNames accountOpt branchOpt usesIds
+
+        let uses =
+          usesList
+          |> Stdlib.List.map (fun pair ->
+            let (id, refType) = pair
+            let idStr = Stdlib.Uuid.toString id
+
+            let name =
+              usesNames
+              |> Stdlib.List.findFirst (fun namePair ->
+                let (nameId, _n) = namePair
+                nameId == id)
+              |> Stdlib.Option.map (fun namePair ->
+                let (_nameId, n) = namePair
+                n)
+              |> Stdlib.Option.withDefault idStr
+
+            DepItem { id = idStr; name = name; refType = refType })
+
+        // Get what uses this entity (dependents)
+        let usedByList = Builtin.dependenciesGetDependents accountOpt branchOpt entityId
+
+        let usedByIds = usedByList |> Stdlib.List.map (fun pair ->
+          let (id, _refType) = pair
+          id)
+
+        let usedByNames = Builtin.dependenciesResolveNames accountOpt branchOpt usedByIds
+
+        let usedBy =
+          usedByList
+          |> Stdlib.List.map (fun pair ->
+            let (id, refType) = pair
+            let idStr = Stdlib.Uuid.toString id
+
+            let name =
+              usedByNames
+              |> Stdlib.List.findFirst (fun namePair ->
+                let (nameId, _n) = namePair
+                nameId == id)
+              |> Stdlib.Option.map (fun namePair ->
+                let (_nameId, n) = namePair
+                n)
+              |> Stdlib.Option.withDefault idStr
+
+            DepItem { id = idStr; name = name; refType = refType })
+
+        DepsResponse { uses = uses; usedBy = usedBy }
+
+  let json = Builtin.jsonSerialize<DepsResponse> response
+
+  Stdlib.Http.responseWithHeaders
+    (Stdlib.String.toBytes json)
+    [ ("Content-Type", "application/json")
+      ("Access-Control-Allow-Origin", "*") ]
+    200L
+
+
+// Main dashboard page
+[<HttpHandler("GET", "/")>]
+let _dashboardHandler _req =
+  let html =
+    "<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+  <meta charset=\"UTF-8\">
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+  <title>Agent Activity Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+    /* Context bar */
+    .context-bar {
+      background: #1e293b;
+      padding: 8px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #334155;
+      font-size: 13px;
+    }
+    .context-info { display: flex; gap: 20px; }
+    .context-item { display: flex; align-items: center; gap: 6px; color: #94a3b8; }
+    .context-item .label { color: #64748b; }
+    .context-item .value { color: #f1f5f9; font-weight: 500; }
+    .context-item .badge {
+      background: #334155;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .refresh-indicator { color: #64748b; font-size: 12px; }
+
+    /* Main layout */
+    .main-container { display: flex; height: calc(100vh - 41px); }
+    .left-panel { flex: 1; padding: 20px; overflow-y: auto; border-right: 1px solid #334155; }
+    .right-panel { width: 400px; background: #1e293b; overflow-y: auto; }
+
+    /* Header */
+    .header { margin-bottom: 20px; }
+    .header h1 { font-size: 20px; font-weight: 600; color: #f1f5f9; margin-bottom: 16px; }
+
+    /* Stats row */
+    .stats-row { display: flex; gap: 12px; margin-bottom: 20px; }
+    .stat-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+    .stat-icon { font-size: 20px; }
+    .stat-info { }
+    .stat-value { font-size: 18px; font-weight: 700; color: #f1f5f9; }
+    .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; }
+
+    /* View toggle */
+    .view-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .view-toggle { display: flex; gap: 4px; background: #1e293b; padding: 4px; border-radius: 8px; }
+    .view-btn {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 13px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .view-btn:hover { color: #f1f5f9; }
+    .view-btn.active { background: #334155; color: #f1f5f9; }
+    .section-title { font-size: 14px; font-weight: 600; color: #94a3b8; }
+
+    /* Activity feed */
+    .activity-feed { background: #1e293b; border-radius: 12px; border: 1px solid #334155; }
+    .activity-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #334155;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-item:hover { background: #334155; }
+    .activity-item.selected { background: #3b82f622; border-left: 3px solid #3b82f6; }
+    .activity-icon {
+      width: 32px; height: 32px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; margin-right: 12px; flex-shrink: 0;
+    }
+    .activity-content { flex: 1; min-width: 0; }
+    .activity-action { font-size: 11px; color: #64748b; margin-bottom: 2px; }
+    .activity-name { font-size: 13px; font-weight: 500; color: #f1f5f9; word-break: break-all; }
+    .empty-state, .loading { padding: 40px; text-align: center; color: #64748b; }
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    /* Right panel */
+    .panel-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .panel-title { font-size: 14px; font-weight: 600; color: #f1f5f9; }
+    .panel-close {
+      background: none; border: none; color: #64748b;
+      cursor: pointer; font-size: 18px; padding: 4px;
+    }
+    .panel-close:hover { color: #f1f5f9; }
+    .panel-content { padding: 20px; }
+    .panel-empty { padding: 60px 20px; text-align: center; color: #64748b; }
+    .panel-empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+
+    /* Detail sections */
+    .detail-section { margin-bottom: 24px; }
+    .detail-label { font-size: 11px; color: #64748b; text-transform: uppercase; margin-bottom: 6px; }
+    .detail-value { font-size: 14px; color: #f1f5f9; word-break: break-all; }
+    .detail-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #334155; padding: 6px 12px; border-radius: 6px;
+      font-size: 13px;
+    }
+    .detail-badge .icon { font-size: 16px; }
+
+    /* Connections */
+    .connections-list { display: flex; flex-direction: column; gap: 8px; }
+    .connection-item {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .connection-item:hover { border-color: #3b82f6; }
+    .connection-icon { font-size: 16px; }
+    .connection-info { flex: 1; }
+    .connection-name { font-size: 13px; color: #f1f5f9; }
+    .connection-type { font-size: 11px; color: #64748b; }
+    .connection-arrow { color: #64748b; }
+
+    /* Graph view */
+    .graph-container { height: 400px; background: #0f172a; border-radius: 8px; border: 1px solid #334155; display: flex; align-items: center; justify-content: center; }
+    .graph-placeholder { text-align: center; color: #64748b; }
+    .graph-placeholder-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.2; }
+
+    /* Diff view */
+    .diff-container { background: #0f172a; border-radius: 8px; border: 1px solid #334155; }
+    .diff-header { padding: 12px 16px; border-bottom: 1px solid #334155; font-size: 13px; color: #94a3b8; }
+    .diff-content { padding: 16px; font-family: monospace; font-size: 12px; }
+    .diff-added { color: #22c55e; }
+    .diff-updated { color: #f59e0b; }
+    .diff-remove { color: #ef4444; }
+    .diff-item { transition: background 0.2s; border-radius: 6px; padding: 12px; margin: -12px; margin-bottom: 4px; }
+    .diff-item:hover { background: #1e293b; }
+    .diff-item.selected { background: #22c55e22; border-left: 3px solid #22c55e; }
+    .diff-item.selected-updated { background: #f59e0b22; border-left: 3px solid #f59e0b; }
+
+    /* Selectors in context bar */
+    .context-select {
+      background: #334155;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      color: #f1f5f9;
+      padding: 4px 8px;
+      font-size: 13px;
+      cursor: pointer;
+      min-width: 120px;
+    }
+    .context-select:hover { border-color: #3b82f6; }
+    .context-select:focus { outline: none; border-color: #3b82f6; }
+    .context-select option { background: #1e293b; }
+  </style>
+</head>
+<body>
+  <!-- Context Bar -->
+  <div class=\"context-bar\">
+    <div class=\"context-info\">
+      <div class=\"context-item\">
+        <span class=\"label\">Account:</span>
+        <select class=\"context-select\" id=\"account-select\">
+          <option value=\"\">Loading...</option>
+        </select>
+      </div>
+      <div class=\"context-item\">
+        <span class=\"label\">Branch:</span>
+        <select class=\"context-select\" id=\"branch-select\">
+          <option value=\"\">All Branches</option>
+        </select>
+      </div>
+    </div>
+    <div class=\"refresh-indicator\" id=\"refresh-indicator\">Connecting...</div>
+  </div>
+
+  <div class=\"main-container\">
+    <!-- Left Panel: Activity -->
+    <div class=\"left-panel\">
+      <div class=\"header\">
+        <h1>Agent Activity Dashboard</h1>
+      </div>
+
+      <!-- Stats Row -->
+      <div class=\"stats-row\">
+        <div class=\"stat-card\">
+          <div class=\"stat-icon\" style=\"color: #3b82f6\">λ</div>
+          <div class=\"stat-info\">
+            <div class=\"stat-value\" id=\"fn-count\">-</div>
+            <div class=\"stat-label\">Functions</div>
+          </div>
+        </div>
+        <div class=\"stat-card\">
+          <div class=\"stat-icon\" style=\"color: #a855f7\">{ }</div>
+          <div class=\"stat-info\">
+            <div class=\"stat-value\" id=\"type-count\">-</div>
+            <div class=\"stat-label\">Types</div>
+          </div>
+        </div>
+        <div class=\"stat-card\">
+          <div class=\"stat-icon\" style=\"color: #22c55e\">=</div>
+          <div class=\"stat-info\">
+            <div class=\"stat-value\" id=\"value-count\">-</div>
+            <div class=\"stat-label\">Values</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View Controls -->
+      <div class=\"view-controls\">
+        <span class=\"section-title\">Recent Activity</span>
+        <div class=\"view-toggle\">
+          <button class=\"view-btn active\" data-view=\"feed\">Feed</button>
+          <button class=\"view-btn\" data-view=\"graph\">Graph</button>
+          <button class=\"view-btn\" data-view=\"diff\">Diff</button>
+        </div>
+      </div>
+
+      <!-- Feed View -->
+      <div id=\"feed-view\" class=\"view-content\">
+        <div class=\"activity-feed\" id=\"activity-feed\">
+          <div class=\"loading pulse\">Loading activity...</div>
+        </div>
+      </div>
+
+      <!-- Graph View -->
+      <div id=\"graph-view\" class=\"view-content\" style=\"display: none;\">
+        <div class=\"graph-container\" id=\"graph-container\">
+          <div class=\"graph-placeholder\" id=\"graph-placeholder\">
+            <div class=\"graph-placeholder-icon\">◎</div>
+            <div>Select an item to view its connections</div>
+          </div>
+          <svg id=\"graph-svg\" style=\"display: none; width: 100%; height: 100%;\"></svg>
+        </div>
+      </div>
+
+      <!-- Diff View -->
+      <div id=\"diff-view\" class=\"view-content\" style=\"display: none;\">
+        <div class=\"diff-container\">
+          <div class=\"diff-header\">Recent changes (from ops log)</div>
+          <div class=\"diff-content\" id=\"diff-content\">
+            <div style=\"color: #64748b;\">Loading changes...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel: Details -->
+    <div class=\"right-panel\" id=\"right-panel\">
+      <div class=\"panel-empty\">
+        <div class=\"panel-empty-icon\">←</div>
+        <div>Select an item to view details</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedItem = null;
+    let currentView = 'feed';
+    let allDiffItems = [];
+
+    const opTypeLabels = {
+      'AddFn': 'Added function',
+      'AddType': 'Added type',
+      'AddValue': 'Added value',
+      'fn': 'Function',
+      'type': 'Type',
+      'value': 'Value'
+    };
+
+    function formatName(op) {
+      const parts = [op.owner];
+      if (op.modules) parts.push(op.modules);
+      parts.push(op.name);
+      return parts.join('.');
+    }
+
+    function selectItem(op, index) {
+      selectedItem = { ...op, index };
+      document.querySelectorAll('.activity-item').forEach((el, i) => {
+        el.classList.toggle('selected', i === index);
+      });
+      renderDetailPanel(op);
+      renderGraph(op);
+    }
+
+    async function renderDetailPanel(op) {
+      const panel = document.getElementById('right-panel');
+      const fullName = formatName(op);
+
+      // Show loading state first
+      panel.innerHTML = `
+        <div class=\"panel-header\">
+          <span class=\"panel-title\">Details</span>
+          <button class=\"panel-close\" onclick=\"closePanel()\">×</button>
+        </div>
+        <div class=\"panel-content\">
+          <div class=\"detail-section\">
+            <div class=\"detail-label\">Entity</div>
+            <div class=\"detail-badge\">
+              <span class=\"icon\" style=\"color: ${op.color}\">${op.icon}</span>
+              <span>${opTypeLabels[op.opType] || op.opType}</span>
+            </div>
+          </div>
+          <div class=\"detail-section\">
+            <div class=\"detail-label\">Full Name</div>
+            <div class=\"detail-value\">${fullName}</div>
+          </div>
+          <div class=\"detail-section\">
+            <div class=\"detail-label\">Owner</div>
+            <div class=\"detail-value\">${op.owner || getItemFullPath(op).split('.')[0]}</div>
+          </div>
+          <div class=\"detail-section\">
+            <div class=\"detail-label\">Module</div>
+            <div class=\"detail-value\">${op.modules || getItemFullPath(op).split('.').slice(1, -1).join('.') || '(root)'}</div>
+          </div>
+          <div class=\"detail-section\">
+            <div class=\"detail-label\">Dependencies</div>
+            <div style=\"color: #64748b; font-size: 13px;\">Loading...</div>
+          </div>
+        </div>
+      `;
+
+      // Fetch dependencies from API
+      const deps = await fetchDeps(op.entityId);
+      const uses = deps.uses.map(d => ({ icon: getIconForRefType(d.refType), name: d.name, color: '#22c55e' }));
+      const usedBy = deps.usedBy.map(d => ({ icon: getIconForRefType(d.refType), name: d.name, color: '#f59e0b' }));
+
+      const renderConnectionList = (items, label, arrow) => {
+        if (items.length === 0) return '';
+        return `
+          <div class=\"detail-section\">
+            <div class=\"detail-label\">${label}</div>
+            <div class=\"connections-list\">
+              ${items.map(c => `
+                <div class=\"connection-item\">
+                  <span class=\"connection-icon\" style=\"color: ${c.color}\">${c.icon}</span>
+                  <div class=\"connection-info\">
+                    <div class=\"connection-name\">${c.name}</div>
+                  </div>
+                  <span class=\"connection-arrow\">${arrow}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      };
+
+      const noConnections = uses.length === 0 && usedBy.length === 0;
+
+      panel.innerHTML = `
+        <div class=\"panel-header\">
+          <span class=\"panel-title\">Details</span>
+          <button class=\"panel-close\" onclick=\"closePanel()\">×</button>
+        </div>
+        <div class=\"panel-content\">
+          <div class=\"detail-section\">
+            <div class=\"detail-label\">Entity</div>
+            <div class=\"detail-badge\">
+              <span class=\"icon\" style=\"color: ${op.color}\">${op.icon}</span>
+              <span>${opTypeLabels[op.opType] || op.opType}</span>
+            </div>
+          </div>
+          <div class=\"detail-section\">
+            <div class=\"detail-label\">Full Name</div>
+            <div class=\"detail-value\">${fullName}</div>
+          </div>
+          <div class=\"detail-section\">
+            <div class=\"detail-label\">Owner</div>
+            <div class=\"detail-value\">${op.owner || getItemFullPath(op).split('.')[0]}</div>
+          </div>
+          <div class=\"detail-section\">
+            <div class=\"detail-label\">Module</div>
+            <div class=\"detail-value\">${op.modules || getItemFullPath(op).split('.').slice(1, -1).join('.') || '(root)'}</div>
+          </div>
+          ${renderConnectionList(uses, 'Uses (dependencies)', '→')}
+          ${renderConnectionList(usedBy, 'Used By (dependents)', '←')}
+          ${noConnections ? '<div class=\"detail-section\"><div class=\"detail-label\">Connections</div><div style=\"color: #64748b; font-size: 13px;\">No connections found</div></div>' : ''}
+        </div>
+      `;
+    }
+
+    function closePanel() {
+      selectedItem = null;
+      document.querySelectorAll('.activity-item').forEach(el => el.classList.remove('selected'));
+      document.getElementById('right-panel').innerHTML = `
+        <div class=\"panel-empty\">
+          <div class=\"panel-empty-icon\">←</div>
+          <div>Select an item to view details</div>
+        </div>
+      `;
+      hideGraph();
+    }
+
+    function hideGraph() {
+      document.getElementById('graph-placeholder').style.display = 'flex';
+      document.getElementById('graph-svg').style.display = 'none';
+    }
+
+    // Fetch dependencies from the API
+    async function fetchDeps(entityId) {
+      if (!entityId) return { uses: [], usedBy: [] };
+      try {
+        const params = new URLSearchParams({ id: entityId });
+        if (currentAccountId) params.set('account', currentAccountId);
+        if (currentBranchId) params.set('branch', currentBranchId);
+        const response = await fetch(`/api/deps?${params}`);
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch deps:', error);
+        return { uses: [], usedBy: [] };
+      }
+    }
+
+    // Get icon for entity type based on refType
+    function getIconForRefType(refType) {
+      if (refType.includes('Fn') || refType.includes('fn')) return 'λ';
+      if (refType.includes('Type') || refType.includes('type')) return '{ }';
+      return '=';
+    }
+
+    async function renderGraph(op) {
+      const placeholder = document.getElementById('graph-placeholder');
+      const svg = document.getElementById('graph-svg');
+      placeholder.style.display = 'none';
+      svg.style.display = 'block';
+
+      // Show loading state
+      svg.innerHTML = '<text x=\"300\" y=\"200\" text-anchor=\"middle\" fill=\"#64748b\">Loading dependencies...</text>';
+
+      // Extract name from prettyCode for diff items, or use op.name for feed items
+      let fullName = op.name;
+      if (op.prettyCode) {
+        const match = op.prettyCode.match(/^(?:let|type|val) +([a-zA-Z0-9_.]+)/);
+        if (match) {
+          fullName = match[1].split('.').pop();
+        }
+      }
+
+      // Fetch real dependencies from the API
+      const deps = await fetchDeps(op.entityId);
+      const uses = deps.uses.map(d => ({ icon: getIconForRefType(d.refType), name: d.name, color: '#22c55e' }));
+      const usedBy = deps.usedBy.map(d => ({ icon: getIconForRefType(d.refType), name: d.name, color: '#f59e0b' }));
+
+      const cx = 300, cy = 200;
+
+      let svgContent = `
+        <defs>
+          <marker id=\"arrow-uses\" markerWidth=\"10\" markerHeight=\"7\" refX=\"9\" refY=\"3.5\" orient=\"auto\">
+            <polygon points=\"0 0, 10 3.5, 0 7\" fill=\"#22c55e\" />
+          </marker>
+          <marker id=\"arrow-usedby\" markerWidth=\"10\" markerHeight=\"7\" refX=\"0\" refY=\"3.5\" orient=\"auto\">
+            <polygon points=\"10 0, 0 3.5, 10 7\" fill=\"#f59e0b\" />
+          </marker>
+        </defs>
+      `;
+
+      // Draw labels for sections
+      if (uses.length > 0) {
+        svgContent += `<text x=\"480\" y=\"30\" text-anchor=\"middle\" fill=\"#22c55e\" font-size=\"11\" font-weight=\"500\">USES</text>`;
+      }
+      if (usedBy.length > 0) {
+        svgContent += `<text x=\"120\" y=\"30\" text-anchor=\"middle\" fill=\"#f59e0b\" font-size=\"11\" font-weight=\"500\">USED BY</text>`;
+      }
+
+      // Draw uses (right side - what this item references)
+      uses.forEach((conn, i) => {
+        const startAngle = -Math.PI / 3;
+        const endAngle = Math.PI / 3;
+        const angle = uses.length === 1 ? 0 : startAngle + (i / (uses.length - 1)) * (endAngle - startAngle);
+        const r = 140;
+        const x = cx + Math.cos(angle) * r;
+        const y = cy + Math.sin(angle) * r;
+
+        svgContent += `<line x1=\"${cx + 45}\" y1=\"${cy}\" x2=\"${x - 35}\" y2=\"${y}\" stroke=\"#22c55e\" stroke-width=\"2\" marker-end=\"url(#arrow-uses)\" />`;
+        svgContent += `
+          <circle cx=\"${x}\" cy=\"${y}\" r=\"30\" fill=\"#1e293b\" stroke=\"${conn.color}\" stroke-width=\"2\" />
+          <text x=\"${x}\" y=\"${y}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"${conn.color}\" font-size=\"16\">${conn.icon}</text>
+          <text x=\"${x}\" y=\"${y + 45}\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">${conn.name.split('.').pop()}</text>
+        `;
+      });
+
+      // Draw used-by (left side - what references this item)
+      usedBy.forEach((conn, i) => {
+        const startAngle = Math.PI - Math.PI / 3;
+        const endAngle = Math.PI + Math.PI / 3;
+        const angle = usedBy.length === 1 ? Math.PI : startAngle + (i / (usedBy.length - 1)) * (endAngle - startAngle);
+        const r = 140;
+        const x = cx + Math.cos(angle) * r;
+        const y = cy + Math.sin(angle) * r;
+
+        svgContent += `<line x1=\"${x + 35}\" y1=\"${y}\" x2=\"${cx - 45}\" y2=\"${cy}\" stroke=\"#f59e0b\" stroke-width=\"2\" marker-end=\"url(#arrow-usedby)\" />`;
+        svgContent += `
+          <circle cx=\"${x}\" cy=\"${y}\" r=\"30\" fill=\"#1e293b\" stroke=\"${conn.color}\" stroke-width=\"2\" />
+          <text x=\"${x}\" y=\"${y}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"${conn.color}\" font-size=\"16\">${conn.icon}</text>
+          <text x=\"${x}\" y=\"${y + 45}\" text-anchor=\"middle\" fill=\"#94a3b8\" font-size=\"10\">${conn.name.split('.').pop()}</text>
+        `;
+      });
+
+      // Central node
+      svgContent += `
+        <circle cx=\"${cx}\" cy=\"${cy}\" r=\"40\" fill=\"#1e293b\" stroke=\"${op.color}\" stroke-width=\"3\" />
+        <text x=\"${cx}\" y=\"${cy}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"${op.color}\" font-size=\"24\">${op.icon}</text>
+        <text x=\"${cx}\" y=\"${cy + 60}\" text-anchor=\"middle\" fill=\"#f1f5f9\" font-size=\"12\" font-weight=\"500\">${fullName}</text>
+      `;
+
+      const totalConnections = uses.length + usedBy.length;
+      if (totalConnections === 0) {
+        svgContent += `<text x=\"${cx}\" y=\"${cy + 90}\" text-anchor=\"middle\" fill=\"#64748b\" font-size=\"11\">No connections detected</text>`;
+      }
+
+      svg.innerHTML = svgContent;
+    }
+
+    // Get the full path of an item
+    function getItemFullPath(item) {
+      if (item.prettyCode) {
+        const match = item.prettyCode.match(/^(?:let|type|val) +([a-zA-Z0-9_.]+)/);
+        if (match) return match[1];
+      }
+      if (item.owner && item.name) {
+        const parts = [item.owner];
+        if (item.modules) parts.push(item.modules);
+        parts.push(item.name);
+        return parts.join('.');
+      }
+      return item.name || '';
+    }
+
+    function renderActivityItem(op, index) {
+      const isSelected = selectedItem && selectedItem.index === index;
+      return `
+        <div class=\"activity-item ${isSelected ? 'selected' : ''}\" onclick=\"selectItem(${JSON.stringify(op).replace(/\"/g, '&quot;')}, ${index})\">
+          <div class=\"activity-icon\" style=\"background: ${op.color}22; color: ${op.color}\">${op.icon}</div>
+          <div class=\"activity-content\">
+            <div class=\"activity-action\">${opTypeLabels[op.opType] || op.opType}</div>
+            <div class=\"activity-name\">${formatName(op)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function setView(view) {
+      currentView = view;
+      document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === view);
+      });
+      document.querySelectorAll('.view-content').forEach(el => {
+        el.style.display = 'none';
+      });
+      document.getElementById(view + '-view').style.display = 'block';
+      // Load diff data when switching to diff view
+      if (view === 'diff') {
+        loadDiff();
+      }
+    }
+
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', () => setView(btn.dataset.view));
+    });
+
+    // State for current selections
+    let currentAccountId = null;
+    let currentAccountName = null;
+    let currentBranchId = null;
+
+    async function fetchOps() {
+      try {
+        const params = new URLSearchParams();
+        if (currentBranchId) {
+          params.set('branch', currentBranchId);
+        }
+        if (currentAccountName) {
+          params.set('account', currentAccountName);
+        }
+        const url = params.toString() ? `/api/ops?${params}` : '/api/ops';
+        const response = await fetch(url);
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch ops:', error);
+        return [];
+      }
+    }
+
+    async function fetchStats() {
+      try {
+        const response = await fetch('/api/stats');
+        return await response.json();
+      } catch (error) {
+        return { types: 0, fns: 0, values: 0 };
+      }
+    }
+
+    async function fetchAccounts() {
+      try {
+        const response = await fetch('/api/accounts');
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch accounts:', error);
+        return [];
+      }
+    }
+
+    async function fetchBranches(accountId) {
+      try {
+        const response = await fetch(`/api/branches?account=${accountId}`);
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch branches:', error);
+        return [];
+      }
+    }
+
+    // Store accounts for lookup
+    let allAccounts = [];
+
+    function updateAccountSelect(accounts) {
+      allAccounts = accounts;
+      const select = document.getElementById('account-select');
+      select.innerHTML = accounts.map(acc =>
+        `<option value=\"${acc.id}\" data-name=\"${acc.name}\">${acc.name}</option>`
+      ).join('');
+
+      // Auto-select first account and load its branches
+      if (accounts.length > 0) {
+        currentAccountId = accounts[0].id;
+        currentAccountName = accounts[0].name;
+        select.value = currentAccountId;
+        loadBranches(currentAccountId);
+      }
+    }
+
+    function updateBranchSelect(branches) {
+      const select = document.getElementById('branch-select');
+      select.innerHTML = '<option value=\"\">All Branches</option>' +
+        branches.map(b => `<option value=\"${b.id}\">${b.name}</option>`).join('');
+    }
+
+    async function loadBranches(accountId) {
+      const branches = await fetchBranches(accountId);
+      updateBranchSelect(branches);
+    }
+
+    // Event listeners for dropdowns
+    document.getElementById('account-select').addEventListener('change', async (e) => {
+      currentAccountId = e.target.value;
+      // Find account name from stored accounts
+      const account = allAccounts.find(a => a.id === currentAccountId);
+      currentAccountName = account ? account.name : null;
+      currentBranchId = null;
+      document.getElementById('branch-select').value = '';
+      if (currentAccountId) {
+        await loadBranches(currentAccountId);
+      }
+      refresh();
+    });
+
+    document.getElementById('branch-select').addEventListener('change', (e) => {
+      currentBranchId = e.target.value || null;
+      refresh();
+    });
+
+    function updateActivityFeed(ops) {
+      const feed = document.getElementById('activity-feed');
+      if (ops.length === 0) {
+        feed.innerHTML = '<div class=\"empty-state\">No recent activity</div>';
+        return;
+      }
+      feed.innerHTML = ops.map((op, i) => renderActivityItem(op, i)).join('');
+    }
+
+    async function fetchDiff() {
+      try {
+        const params = new URLSearchParams();
+        params.set('limit', '20');
+        if (currentBranchId) {
+          params.set('branch', currentBranchId);
+        }
+        if (currentAccountId) {
+          params.set('account', currentAccountId);
+        }
+        const response = await fetch(`/api/diff?${params}`);
+        return await response.json();
+      } catch (error) {
+        console.error('Failed to fetch diff:', error);
+        return [];
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function selectDiffItem(index) {
+      const item = allDiffItems[index];
+      if (!item) return;
+      selectedItem = { ...item, index, isDiff: true };
+      document.querySelectorAll('.diff-item').forEach((el, i) => {
+        el.classList.remove('selected', 'selected-updated');
+        if (i === index) {
+          const changeType = el.dataset.changeType || 'added';
+          el.classList.add(changeType === 'updated' ? 'selected-updated' : 'selected');
+        }
+      });
+      renderDetailPanel(item);
+      renderGraph(item);
+    }
+
+    function updateDiffView(diffItems) {
+      allDiffItems = diffItems;
+      const diffContent = document.getElementById('diff-content');
+      if (diffItems.length === 0) {
+        diffContent.innerHTML = '<div style=\"color: #64748b;\">No recent changes</div>';
+        return;
+      }
+      const diffHtml = diffItems.map((item, index) => {
+        const changeType = item.changeType || 'added';
+        const lineClass = changeType === 'updated' ? 'diff-updated' : 'diff-added';
+        const linePrefix = changeType === 'updated' ? '~' : '+';
+        const changeLabel = changeType === 'updated' ? ' (updated)' : '';
+        const lines = item.prettyCode.split('\\n').map(line =>
+          `<div class=\"${lineClass}\">${linePrefix} ${escapeHtml(line)}</div>`
+        ).join('');
+        return `<div class=\"diff-item\" data-index=\"${index}\" data-change-type=\"${changeType}\" style=\"margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #334155; cursor: pointer;\">
+          <div style=\"color: ${item.color}; margin-bottom: 8px;\">
+            <span style=\"margin-right: 8px;\">${item.icon}</span>
+            <span style=\"text-transform: uppercase; font-size: 10px;\">${item.opType}${changeLabel}</span>
+          </div>
+          <div style=\"font-family: monospace; font-size: 12px; white-space: pre-wrap;\">${lines}</div>
+          <div style=\"color: #64748b; font-size: 10px; margin-top: 4px;\">Click to view dependencies</div>
+        </div>`;
+      }).join('');
+      diffContent.innerHTML = diffHtml;
+
+      // Add click handlers using event delegation
+      diffContent.querySelectorAll('.diff-item').forEach(el => {
+        el.addEventListener('click', function() {
+          const index = parseInt(this.dataset.index);
+          selectDiffItem(index);
+        });
+      });
+    }
+
+    async function loadDiff() {
+      const diffItems = await fetchDiff();
+      updateDiffView(diffItems);
+    }
+
+    function updateStats(stats) {
+      document.getElementById('fn-count').textContent = stats.fns;
+      document.getElementById('type-count').textContent = stats.types;
+      document.getElementById('value-count').textContent = stats.values;
+    }
+
+    function updateRefreshIndicator() {
+      const indicator = document.getElementById('refresh-indicator');
+      const now = new Date();
+      indicator.textContent = `Updated ${now.toLocaleTimeString()}`;
+    }
+
+    async function refresh() {
+      const [ops, stats] = await Promise.all([fetchOps(), fetchStats()]);
+      updateActivityFeed(ops);
+      updateStats(stats);
+      updateRefreshIndicator();
+    }
+
+    async function init() {
+      // Load accounts first
+      const accounts = await fetchAccounts();
+      updateAccountSelect(accounts);
+      // Load diff view
+      loadDiff();
+      // Then do initial refresh
+      await refresh();
+    }
+
+    init();
+    setInterval(refresh, 2000);
+  </script>
+</body>
+</html>"
+
+  Stdlib.Http.responseWithHeaders
+    (Stdlib.String.toBytes html)
+    [ ("Content-Type", "text/html; charset=utf-8") ]
+    200L
+
+
+// Health check endpoint
+[<HttpHandler("GET", "/ping")>]
+let _pingHandler _req =
+  Stdlib.Http.response (Stdlib.String.toBytes "pong") 200L

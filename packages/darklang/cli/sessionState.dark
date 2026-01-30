@@ -1,0 +1,65 @@
+module Darklang.Cli.SessionState
+
+// Session state that persists across CLI restarts and is readable by canvases
+// Stored in rundir/cli-session.json
+
+type SessionState =
+  { accountName: String
+    accountID: Stdlib.Option.Option<Uuid>
+    branchID: Stdlib.Option.Option<Uuid>
+    branchName: String }
+
+let sessionFilePath () : String = "rundir/cli-session.json"
+
+// Read current session state from disk
+let read () : SessionState =
+  match Builtin.fileExists (sessionFilePath ()) with
+  | true ->
+    match Builtin.fileRead (sessionFilePath ()) with
+    | Ok bytes ->
+      let contents = Stdlib.String.fromBytesWithReplacement bytes
+
+      match Builtin.jsonParse<SessionState> contents with
+      | Ok state -> state
+      | Error _ -> defaultState ()
+
+    | Error _ -> defaultState ()
+
+  | false -> defaultState ()
+
+
+// Write session state to disk
+let write (state: SessionState) : Unit =
+  let json = Builtin.jsonSerialize<SessionState> state
+  let jsonBytes = Stdlib.String.toBytes json
+  let _ = Builtin.fileWrite jsonBytes (sessionFilePath ())
+  ()
+
+
+// Default state when no session file exists
+let defaultState () : SessionState =
+  SessionState
+    { accountName = "Local Dev"
+      accountID = Stdlib.Option.Option.None
+      branchID = Stdlib.Option.Option.None
+      branchName = "main" }
+
+
+// Update session state from AppState - call this when account or branch changes
+let updateFromAppState (appState: Cli.AppState) : Unit =
+  let branchName =
+    match appState.currentBranchId with
+    | Some id ->
+      match Darklang.SCM.Branch.get id with
+      | Some branch -> branch.name
+      | None -> "unknown"
+    | None -> "main"
+
+  let state =
+    SessionState
+      { accountName = appState.accountName
+        accountID = appState.accountID
+        branchID = appState.currentBranchId
+        branchName = branchName }
+
+  write state

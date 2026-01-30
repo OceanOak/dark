@@ -33,6 +33,7 @@ module HandleCommand =
       // CLEANUP stop tossing the result
       let! _ = reloadCanvas "dark-packages"
       let! _ = reloadCanvas "dark-editor"
+      let! _ = reloadCanvas "dark-agent-dashboard"
       return Ok()
     }
 
@@ -54,10 +55,11 @@ module HandleCommand =
       print "Loaded packages from disk "
       print $"{stats.types} types, {stats.values} values, and {stats.fns} fns"
 
-      // Reload dark-packages and dark-editor canvases after package reload
+      // Reload canvases after package reload
       print "Reloading dark-packages canvas..."
       let! _ = reloadCanvas "dark-packages"
       let! _ = reloadCanvas "dark-editor"
+      let! _ = reloadCanvas "dark-agent-dashboard"
 
       return Ok()
     }

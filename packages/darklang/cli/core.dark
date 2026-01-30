@@ -35,15 +35,20 @@ let initState () : AppState =
       | Error _ -> Stdlib.Option.Option.None
     | None -> Stdlib.Option.Option.None
 
-  AppState
-    { isExiting = false
-      prompt = Prompt.initState()
-      needsFullRedraw = true
-      packageData = Packages.initState()
-      currentPage = Page.MainPrompt
-      accountName = accountName
-      accountID = accountUuid
-      currentBranchId = branchId }
+  let state =
+    AppState
+      { isExiting = false
+        prompt = Prompt.initState()
+        needsFullRedraw = true
+        packageData = Packages.initState()
+        currentPage = Page.MainPrompt
+        accountName = accountName
+        accountID = accountUuid
+        currentBranchId = branchId }
+
+  // Write initial session state for dashboard to read
+  SessionState.updateFromAppState state
+  state
 
 type Msg =
   | ProcessInput of String
