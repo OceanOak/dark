@@ -97,5 +97,6 @@ let configuration : BuiltinExecution.Libs.HttpClient.Configuration =
     allowedHeaders =
       (fun headers -> not <| LocalAccess.hasInstanceMetadataHeader headers)
     telemetryInitialize = (fun f -> f ())
+    telemetryInitializeStreaming = (fun f -> f ())
     telemetryAddTag = (fun _ _ -> ())
     telemetryAddException = (fun _ _ -> ()) }

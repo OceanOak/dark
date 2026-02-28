@@ -69,6 +69,13 @@ module Type =
       let badUrlDetails = p [] "BadUrlDetails" "31c0dd4a-6461-425b-84db-21064eb62235"
       let requestError = p [] "RequestError" "1f765ab5-7b59-45e6-a970-ee9f9d28c379"
       let response = p [] "Response" "973d78f8-6591-4cc3-8c81-19d58dc2fca7"
+      // Streaming types
+      let streamChunk = p [] "StreamChunk" "e26ebbaa-34ce-47b8-a9c9-5a0ab90017b2"
+      let streamingResponse =
+        p [] "StreamingResponse" "0f661cec-370e-43ee-97a8-8c9f0a1db160"
+      // SSE types
+      let sseEvent = p [] "SSEEvent" "a7c3e1f2-4b5d-6e8a-9f0c-1d2e3f4a5b6c"
+      let sseChunk = p [] "SSEChunk" "b8d4f2a3-5c6e-7f9b-0a1d-2e3f4a5b6c7d"
 
     module Json =
       module ParseError =
@@ -454,7 +461,10 @@ module Fn =
     module HttpClient =
       let request =
         p [ "HttpClient" ] "request" "fa4a4756-cb6b-4575-b192-ec8f02f13f40"
-
+      let requestStreaming =
+        p [ "HttpClient" ] "requestStreaming" "268c4792-8f58-4a71-a273-5558d8e4dd19"
+      let requestSSE =
+        p [ "HttpClient" ] "requestSSE" "c9e5f3a4-6d7f-8a0b-1c2e-3d4f5a6b7c8e"
 
   module LanguageTools =
     let private p addl = p ("LanguageTools" :: addl)

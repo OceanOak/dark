@@ -11,6 +11,7 @@ open LibExecution
 open LibExecution.RuntimeTypes
 module VT = ValueType
 module RTE = RuntimeError
+module Exe = Execution
 
 type Method = HttpMethod
 
@@ -87,6 +88,62 @@ module RequestError =
 
 type RequestResult = Result<Response, RequestError.RequestError>
 
+
+// STREAMING TYPES
+
+/// Result of initiating a streaming request (headers only, body streams later)
+type StreamingResponse = { statusCode : int; headers : Headers.T }
+
+/// Chunk types for streaming
+module StreamChunk =
+  type StreamChunk =
+    | Data of byte array
+    | Done
+    | Error of string
+
+  let toDT (chunk : StreamChunk) : Dval =
+    let typeName = FQTypeName.fqPackage PackageIDs.Type.Stdlib.HttpClient.streamChunk
+    let (caseName, fields) =
+      match chunk with
+      | Data bytes -> "Data", [ Dval.byteArrayToDvalList bytes ]
+      | Done -> "Done", []
+      | Error msg -> "Error", [ DString msg ]
+    DEnum(typeName, typeName, [], caseName, fields)
+
+/// SSE event parsed from a Server-Sent Events stream
+type SSEEvent = { data : string; eventType : string; id : string }
+
+module SSEChunk =
+  type SSEChunk =
+    | Event of SSEEvent
+    | Done
+    | Error of string
+
+  let toDT (chunk : SSEChunk) : Dval =
+    let typeName = FQTypeName.fqPackage PackageIDs.Type.Stdlib.HttpClient.sseChunk
+    let (caseName, fields) =
+      match chunk with
+      | Event evt ->
+        let evtTypeName =
+          FQTypeName.fqPackage PackageIDs.Type.Stdlib.HttpClient.sseEvent
+        let evtDval =
+          DRecord(
+            evtTypeName,
+            evtTypeName,
+            [],
+            Map
+              [ ("data", DString evt.data)
+                ("eventType", DString evt.eventType)
+                ("id", DString evt.id) ]
+          )
+        "Event", [ evtDval ]
+      | Done -> "Done", []
+      | Error msg -> "Error", [ DString msg ]
+    DEnum(typeName, typeName, [], caseName, fields)
+
+type StreamingResult = Result<StreamingResponse, RequestError.RequestError>
+
+
 type Configuration =
   { timeoutInMs : int
     allowedIP : System.Net.IPAddress -> bool
@@ -95,6 +152,8 @@ type Configuration =
     allowedHeaders : Headers.T -> bool
     // telemetryInitialize allows us wrap the code with a span
     telemetryInitialize : (unit -> Task<RequestResult>) -> Task<RequestResult>
+    telemetryInitializeStreaming :
+      (unit -> Task<StreamingResult>) -> Task<StreamingResult>
     telemetryAddTag : string -> obj -> unit
     telemetryAddException : Metadata -> System.Exception -> unit }
 
@@ -221,6 +280,7 @@ let defaultConfig =
     allowedScheme = fun _ -> true
     allowedHeaders = fun _ -> true
     telemetryInitialize = fun f -> f ()
+    telemetryInitializeStreaming = fun f -> f ()
     telemetryAddTag = fun _ _ -> ()
     telemetryAddException = fun _ _ -> () }
 
@@ -375,6 +435,312 @@ let makeRequest
     })
 
 
+/// Callback type for raw streaming - receives a chunk, returns true to continue
+type StreamCallback = StreamChunk.StreamChunk -> Task<bool>
+
+/// Callback type for SSE streaming - receives an SSE chunk, returns true to continue
+type SSECallback = SSEChunk.SSEChunk -> Task<bool>
+
+/// Helper to set up an HTTP request message with headers, returning the validated request
+/// or a RequestError. Shared by makeStreamingRequest and makeSSERequest.
+let private setupStreamingRequest
+  (config : Configuration)
+  (httpClient : HttpClient)
+  (httpRequest : Request)
+  (cancellationToken : System.Threading.CancellationToken)
+  : Task<Result<HttpResponseMessage * Headers.T, RequestError.RequestError>> =
+  task {
+    let uri = System.Uri(httpRequest.url, System.UriKind.Absolute)
+
+    let host = uri.Host.Trim().ToLower()
+    if not (config.allowedHost host) then
+      return Error(RequestError.BadUrl BadUrl.BadUrlDetails.InvalidHost)
+    else if not (config.allowedHeaders httpRequest.headers) then
+      return Error(RequestError.BadUrl BadUrl.BadUrlDetails.InvalidRequest)
+    else if not (config.allowedScheme uri.Scheme) then
+      return Error(RequestError.BadUrl BadUrl.BadUrlDetails.UnsupportedProtocol)
+    else
+      let reqUri =
+        System.UriBuilder(
+          Scheme = uri.Scheme,
+          Host = uri.Host,
+          Port = uri.Port,
+          Path = uri.AbsolutePath,
+          Query = uri.Query
+        )
+        |> string
+
+      use req =
+        new HttpRequestMessage(
+          httpRequest.method,
+          reqUri,
+          Content = new ByteArrayContent(httpRequest.body),
+          Version = System.Net.HttpVersion.Version11
+        )
+
+      let headerResults =
+        httpRequest.headers
+        |> List.map (fun (k, v) ->
+          if String.equalsCaseInsensitive k "content-type" then
+            try
+              req.Content.Headers.ContentType <-
+                Headers.MediaTypeHeaderValue.Parse(v)
+              Ok()
+            with :? System.FormatException ->
+              Error BadHeader.InvalidContentType
+          else
+            let added = req.Headers.TryAddWithoutValidation(k, v)
+            if not added then req.Content.Headers.Add(k, v)
+            Ok())
+
+      match Result.collect headerResults with
+      | Ok _ ->
+        config.telemetryAddTag "request.content_type" req.Content.Headers.ContentType
+
+        // Don't use `use!` here — caller needs the response alive for stream reading
+        let! response =
+          httpClient.SendAsync(
+            req,
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken
+          )
+
+        config.telemetryAddTag "response.status_code" response.StatusCode
+        config.telemetryAddTag "response.version" response.Version
+
+        let headersForAspNetResponse (response : HttpResponseMessage) : Headers.T =
+          let fromAspNetHeaders (headers : Headers.HttpHeaders) : Headers.T =
+            headers
+            |> Seq.map Tuple2.fromKeyValuePair
+            |> Seq.map (fun (k, v) -> (k, v |> Seq.toList |> String.concat ","))
+            |> Seq.toList
+          fromAspNetHeaders response.Headers
+          @ fromAspNetHeaders response.Content.Headers
+
+        let headers =
+          response
+          |> headersForAspNetResponse
+          |> List.map (fun (k, v) -> (String.toLowercase k, String.toLowercase v))
+
+        return Ok(response, headers)
+
+      | Error e -> return Error(RequestError.RequestError.BadHeader e)
+  }
+
+/// Make a raw streaming HTTP request.
+/// Uses ResponseHeadersRead to start processing before the body is complete.
+/// Reads raw bytes in 8KB buffer chunks — no text interpretation or SSE parsing.
+/// Calls the callback for each chunk; callback returns false to stop early.
+let makeStreamingRequest
+  (config : Configuration)
+  (httpClient : HttpClient)
+  (httpRequest : Request)
+  (onChunk : StreamCallback)
+  : Task<StreamingResult> =
+  config.telemetryInitializeStreaming (fun () ->
+    task {
+      config.telemetryAddTag "request.url" httpRequest.url
+      config.telemetryAddTag "request.method" httpRequest.method
+      config.telemetryAddTag "request.streaming" true
+      try
+        let source =
+          new System.Threading.CancellationTokenSource(config.timeoutInMs)
+        let cancellationToken = source.Token
+
+        let! setupResult =
+          setupStreamingRequest config httpClient httpRequest cancellationToken
+
+        match setupResult with
+        | Ok(response, headers) ->
+          use _response = response
+          use! responseStream =
+            response.Content.ReadAsStreamAsync(cancellationToken)
+          let buffer = Array.zeroCreate<byte> 8192
+
+          let mutable reading = true
+          let mutable totalBytes = 0L
+
+          while reading do
+            let! bytesRead =
+              responseStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)
+            if bytesRead = 0 then
+              reading <- false
+              let! _ = onChunk StreamChunk.Done
+              ()
+            else
+              totalBytes <- totalBytes + int64 bytesRead
+              let chunk = Array.sub buffer 0 bytesRead
+              let! shouldContinue = onChunk (StreamChunk.Data chunk)
+              if not shouldContinue then reading <- false
+
+          config.telemetryAddTag "response.total_bytes" totalBytes
+
+          return Ok { statusCode = int response.StatusCode; headers = headers }
+
+        | Error e -> return Error e
+
+      with
+      | :? TaskCanceledException ->
+        config.telemetryAddTag "error" true
+        config.telemetryAddTag "error.msg" "Timeout"
+        let! _ = onChunk (StreamChunk.Error "Request timed out")
+        return Error RequestError.Timeout
+
+      | :? System.ArgumentException as e when
+        e.Message = "Only 'http' and 'https' schemes are allowed. (Parameter 'value')"
+        ->
+        config.telemetryAddTag "error" true
+        config.telemetryAddTag "error.msg" "Unsupported Protocol"
+        return Error(RequestError.BadUrl BadUrl.BadUrlDetails.UnsupportedProtocol)
+
+      | :? System.UriFormatException ->
+        config.telemetryAddTag "error" true
+        config.telemetryAddTag "error.msg" "Invalid URI"
+        return Error(RequestError.BadUrl BadUrl.BadUrlDetails.InvalidUri)
+
+      | :? IOException as e ->
+        let! _ = onChunk (StreamChunk.Error $"Network error: {e.Message}")
+        return Error(RequestError.NetworkError)
+
+      | :? HttpRequestException as e ->
+        let statusCode = if e.StatusCode.HasValue then int e.StatusCode.Value else 0
+        config.telemetryAddException [ "error.status_code", statusCode ] e
+        let! _ = onChunk (StreamChunk.Error $"HTTP error: {e.Message}")
+        return Error(RequestError.NetworkError)
+    })
+
+
+/// Make an SSE (Server-Sent Events) streaming HTTP request.
+/// Uses StreamReader.ReadLineAsync() for line-based SSE parsing.
+/// Parses W3C-compliant SSE: data/event/id fields, empty line = event boundary.
+/// Calls the callback for each parsed event; callback returns false to stop early.
+let makeSSERequest
+  (config : Configuration)
+  (httpClient : HttpClient)
+  (httpRequest : Request)
+  (onEvent : SSECallback)
+  : Task<StreamingResult> =
+  config.telemetryInitializeStreaming (fun () ->
+    task {
+      config.telemetryAddTag "request.url" httpRequest.url
+      config.telemetryAddTag "request.method" httpRequest.method
+      config.telemetryAddTag "request.streaming.sse" true
+      try
+        let source =
+          new System.Threading.CancellationTokenSource(config.timeoutInMs)
+        let cancellationToken = source.Token
+
+        let! setupResult =
+          setupStreamingRequest config httpClient httpRequest cancellationToken
+
+        match setupResult with
+        | Ok(response, headers) ->
+          use _response = response
+          use! responseStream =
+            response.Content.ReadAsStreamAsync(cancellationToken)
+          use reader = new StreamReader(responseStream)
+
+          let mutable reading = true
+          let mutable totalBytes = 0L
+
+          // Accumulated SSE event fields
+          let mutable dataLines = System.Collections.Generic.List<string>()
+          let mutable eventType = ""
+          let mutable lastEventId = ""
+
+          while reading do
+            let! line = reader.ReadLineAsync()
+            if isNull line then
+              // EOF — dispatch any accumulated event, then Done.
+              // Per W3C SSE spec: if the data buffer is empty, the event is not dispatched.
+              // This means event/id-only frames (no data: field) are intentionally dropped.
+              if dataLines.Count > 0 then
+                let data = System.String.Join("\n", dataLines)
+                let evt =
+                  { data = data
+                    eventType = (if eventType = "" then "message" else eventType)
+                    id = lastEventId }
+                let! shouldContinue = onEvent (SSEChunk.Event evt)
+                if not shouldContinue then reading <- false
+                dataLines.Clear()
+                eventType <- ""
+              if reading then
+                reading <- false
+                let! _ = onEvent SSEChunk.Done
+                ()
+            else
+              totalBytes <- totalBytes + int64 line.Length
+              if line = "" then
+                // Empty line = event boundary
+                if dataLines.Count > 0 then
+                  let data = System.String.Join("\n", dataLines)
+                  let evt =
+                    { data = data
+                      eventType = (if eventType = "" then "message" else eventType)
+                      id = lastEventId }
+                  let! shouldContinue = onEvent (SSEChunk.Event evt)
+                  if not shouldContinue then reading <- false
+                  dataLines.Clear()
+                  eventType <- ""
+              else if line.StartsWith(":") then
+                // Comment, ignore
+                ()
+              else
+                // Parse field
+                let colonIdx = line.IndexOf(':')
+                let fieldName, fieldValue =
+                  if colonIdx < 0 then
+                    line, ""
+                  else
+                    let name = line.Substring(0, colonIdx)
+                    let value = line.Substring(colonIdx + 1)
+                    // Strip single leading space from value per spec
+                    let value =
+                      if value.StartsWith(" ") then value.Substring(1) else value
+                    name, value
+                match fieldName with
+                | "data" -> dataLines.Add(fieldValue)
+                | "event" -> eventType <- fieldValue
+                | "id" -> lastEventId <- fieldValue
+                | _ -> () // Unknown fields ignored per spec
+
+          config.telemetryAddTag "response.total_bytes" totalBytes
+
+          return Ok { statusCode = int response.StatusCode; headers = headers }
+
+        | Error e -> return Error e
+
+      with
+      | :? TaskCanceledException ->
+        config.telemetryAddTag "error" true
+        config.telemetryAddTag "error.msg" "Timeout"
+        let! _ = onEvent (SSEChunk.Error "Request timed out")
+        return Error RequestError.Timeout
+
+      | :? System.ArgumentException as e when
+        e.Message = "Only 'http' and 'https' schemes are allowed. (Parameter 'value')"
+        ->
+        config.telemetryAddTag "error" true
+        config.telemetryAddTag "error.msg" "Unsupported Protocol"
+        return Error(RequestError.BadUrl BadUrl.BadUrlDetails.UnsupportedProtocol)
+
+      | :? System.UriFormatException ->
+        config.telemetryAddTag "error" true
+        config.telemetryAddTag "error.msg" "Invalid URI"
+        return Error(RequestError.BadUrl BadUrl.BadUrlDetails.InvalidUri)
+
+      | :? IOException as e ->
+        let! _ = onEvent (SSEChunk.Error $"Network error: {e.Message}")
+        return Error(RequestError.NetworkError)
+
+      | :? HttpRequestException as e ->
+        let statusCode = if e.StatusCode.HasValue then int e.StatusCode.Value else 0
+        config.telemetryAddException [ "error.status_code", statusCode ] e
+        let! _ = onEvent (SSEChunk.Error $"HTTP error: {e.Message}")
+        return Error(RequestError.NetworkError)
+    })
+
+
 let headersType = TList(TTuple(TString, TString, []))
 
 
@@ -479,6 +845,341 @@ let fns (config : Configuration) : List<BuiltInFn> =
                     return Ok(DRecord(typ, typ, [], Map fields) |> resultOk)
 
                   | Error err -> return Error err
+
+                | Error reqHeadersErr, _ ->
+                  return Error(RequestError.BadHeader reqHeadersErr)
+
+                | _, None -> return Error RequestError.BadMethod
+              }
+            match result with
+            | Ok result -> return result
+            | Error err -> return resultError (RequestError.toDT err)
+          }
+        | _ -> incorrectArgs ())
+      sqlSpec = NotQueryable
+      previewable = Impure
+      deprecated = NotDeprecated }
+
+
+    // Streaming HTTP request builtin (raw bytes)
+    { name = fn "httpClientRequestStreaming" 0
+      typeParams = []
+      parameters =
+        [ Param.make "method" TString ""
+          Param.make "uri" TString ""
+          Param.make "headers" headersType ""
+          Param.make "body" (TList TUInt8) ""
+          Param.makeWithArgs
+            "onChunk"
+            (TFn(
+              NEList.singleton (
+                TCustomType(
+                  Ok(
+                    FQTypeName.fqPackage
+                      PackageIDs.Type.Stdlib.HttpClient.streamChunk
+                  ),
+                  []
+                )
+              ),
+              TUnit
+            ))
+            "Callback function called for each chunk of raw bytes"
+            [ "chunk" ] ]
+      returnType =
+        TypeReference.result
+          (TCustomType(
+            Ok(
+              FQTypeName.fqPackage
+                PackageIDs.Type.Stdlib.HttpClient.streamingResponse
+            ),
+            []
+          ))
+          (TCustomType(Ok responseErrorType, []))
+      description =
+        "Make streaming HTTP call to <param uri>. Delivers raw bytes as they arrive.
+        Calls <param onChunk> for each chunk of data received. Returns a <type Result>
+        with status code and headers when complete, or an error if the request failed.
+        For SSE (Server-Sent Events) streams, use requestSSE instead."
+      fn =
+        let streamingResponseType =
+          FQTypeName.fqPackage PackageIDs.Type.Stdlib.HttpClient.streamingResponse
+        let responseTypeOK = KTCustomType(streamingResponseType, [])
+        let responseTypeErr = KTCustomType(responseErrorType, [])
+        let resultOk = Dval.resultOk responseTypeOK responseTypeErr
+        let resultError = Dval.resultError responseTypeOK responseTypeErr
+        (function
+        | exeState,
+          vm,
+          _,
+          [ DString method
+            DString uri
+            DList(_, reqHeaders)
+            DList(_, reqBody)
+            DApplicable callbackApplicable ] ->
+          uply {
+            let! (reqHeaders : Result<List<string * string>, BadHeader.BadHeader>) =
+              reqHeaders
+              |> Ply.List.mapSequentially (fun item ->
+                uply {
+                  match item with
+                  | DTuple(DString k, DString v, []) ->
+                    let k = String.trim k
+                    if k = "" then
+                      return Error BadHeader.EmptyKey
+                    else
+                      return Ok((k, v))
+                  | notAPair ->
+                    return
+                      RTE.Applications.FnParameterNotExpectedType(
+                        FQFnName.Package
+                          PackageIDs.Fn.Stdlib.HttpClient.requestStreaming,
+                        2,
+                        "headers",
+                        VT.list (VT.tuple VT.string VT.string []),
+                        Dval.toValueType notAPair,
+                        notAPair
+                      )
+                      |> RTE.Apply
+                      |> raiseRTE vm.threadID
+                })
+              |> Ply.map Result.collect
+
+            let method =
+              try
+                Some(HttpMethod method)
+              with _ ->
+                None
+
+            let! (result : Result<Dval, RequestError.RequestError>) =
+              uply {
+                match reqHeaders, method with
+                | Ok reqHeaders, Some method ->
+                  let request =
+                    { url = uri
+                      method = method
+                      headers = reqHeaders
+                      body = Dval.dlistToByteArray reqBody }
+
+                  // Track callback errors to propagate after streaming completes
+                  let mutable callbackError : Option<RuntimeError.Error * CallStack> =
+                    None
+
+                  let onChunk (chunk : StreamChunk.StreamChunk) : Task<bool> =
+                    task {
+                      let chunkDval = StreamChunk.toDT chunk
+                      let! result =
+                        Exe.executeApplicable
+                          exeState
+                          vm
+                          callbackApplicable
+                          (NEList.singleton chunkDval)
+                      match result with
+                      | Error(rte, cs) ->
+                        callbackError <- Some(rte, cs)
+                        return false
+                      | Ok _ -> return true
+                    }
+
+                  let! response =
+                    makeStreamingRequest config httpClient request onChunk
+
+                  // Propagate callback error if one occurred
+                  match callbackError with
+                  | Some(rte, _cs) -> return raiseRTE vm.threadID rte
+                  | None ->
+                    match response with
+                    | Ok response ->
+                      let responseHeaders =
+                        response.headers
+                        |> List.map (fun (k, v) ->
+                          DTuple(
+                            DString(String.toLowercase k),
+                            DString(String.toLowercase v),
+                            []
+                          ))
+                        |> Dval.list (KTTuple(VT.string, VT.string, []))
+
+                      let fields =
+                        [ ("statusCode", DInt64(int64 response.statusCode))
+                          ("headers", responseHeaders) ]
+
+                      return
+                        Ok(
+                          DRecord(
+                            streamingResponseType,
+                            streamingResponseType,
+                            [],
+                            Map fields
+                          )
+                          |> resultOk
+                        )
+
+                    | Error err -> return Error err
+
+                | Error reqHeadersErr, _ ->
+                  return Error(RequestError.BadHeader reqHeadersErr)
+
+                | _, None -> return Error RequestError.BadMethod
+              }
+            match result with
+            | Ok result -> return result
+            | Error err -> return resultError (RequestError.toDT err)
+          }
+        | _ -> incorrectArgs ())
+      sqlSpec = NotQueryable
+      previewable = Impure
+      deprecated = NotDeprecated }
+
+
+    // SSE (Server-Sent Events) streaming HTTP request builtin
+    { name = fn "httpClientRequestSSE" 0
+      typeParams = []
+      parameters =
+        [ Param.make "method" TString ""
+          Param.make "uri" TString ""
+          Param.make "headers" headersType ""
+          Param.make "body" (TList TUInt8) ""
+          Param.makeWithArgs
+            "onEvent"
+            (TFn(
+              NEList.singleton (
+                TCustomType(
+                  Ok(FQTypeName.fqPackage PackageIDs.Type.Stdlib.HttpClient.sseChunk),
+                  []
+                )
+              ),
+              TUnit
+            ))
+            "Callback function called for each SSE event"
+            [ "chunk" ] ]
+      returnType =
+        TypeReference.result
+          (TCustomType(
+            Ok(
+              FQTypeName.fqPackage
+                PackageIDs.Type.Stdlib.HttpClient.streamingResponse
+            ),
+            []
+          ))
+          (TCustomType(Ok responseErrorType, []))
+      description =
+        "Make SSE (Server-Sent Events) streaming HTTP call to <param uri>.
+        Parses the SSE protocol and calls <param onEvent> for each parsed event.
+        Returns a <type Result> with status code and headers when complete,
+        or an error if the request failed."
+      fn =
+        let streamingResponseType =
+          FQTypeName.fqPackage PackageIDs.Type.Stdlib.HttpClient.streamingResponse
+        let responseTypeOK = KTCustomType(streamingResponseType, [])
+        let responseTypeErr = KTCustomType(responseErrorType, [])
+        let resultOk = Dval.resultOk responseTypeOK responseTypeErr
+        let resultError = Dval.resultError responseTypeOK responseTypeErr
+        (function
+        | exeState,
+          vm,
+          _,
+          [ DString method
+            DString uri
+            DList(_, reqHeaders)
+            DList(_, reqBody)
+            DApplicable callbackApplicable ] ->
+          uply {
+            let! (reqHeaders : Result<List<string * string>, BadHeader.BadHeader>) =
+              reqHeaders
+              |> Ply.List.mapSequentially (fun item ->
+                uply {
+                  match item with
+                  | DTuple(DString k, DString v, []) ->
+                    let k = String.trim k
+                    if k = "" then
+                      return Error BadHeader.EmptyKey
+                    else
+                      return Ok((k, v))
+                  | notAPair ->
+                    return
+                      RTE.Applications.FnParameterNotExpectedType(
+                        FQFnName.Package PackageIDs.Fn.Stdlib.HttpClient.requestSSE,
+                        2,
+                        "headers",
+                        VT.list (VT.tuple VT.string VT.string []),
+                        Dval.toValueType notAPair,
+                        notAPair
+                      )
+                      |> RTE.Apply
+                      |> raiseRTE vm.threadID
+                })
+              |> Ply.map Result.collect
+
+            let method =
+              try
+                Some(HttpMethod method)
+              with _ ->
+                None
+
+            let! (result : Result<Dval, RequestError.RequestError>) =
+              uply {
+                match reqHeaders, method with
+                | Ok reqHeaders, Some method ->
+                  let request =
+                    { url = uri
+                      method = method
+                      headers = reqHeaders
+                      body = Dval.dlistToByteArray reqBody }
+
+                  // Track callback errors to propagate after streaming completes
+                  let mutable callbackError : Option<RuntimeError.Error * CallStack> =
+                    None
+
+                  let onEvent (chunk : SSEChunk.SSEChunk) : Task<bool> =
+                    task {
+                      let chunkDval = SSEChunk.toDT chunk
+                      let! result =
+                        Exe.executeApplicable
+                          exeState
+                          vm
+                          callbackApplicable
+                          (NEList.singleton chunkDval)
+                      match result with
+                      | Error(rte, cs) ->
+                        callbackError <- Some(rte, cs)
+                        return false
+                      | Ok _ -> return true
+                    }
+
+                  let! response = makeSSERequest config httpClient request onEvent
+
+                  // Propagate callback error if one occurred
+                  match callbackError with
+                  | Some(rte, _cs) -> return raiseRTE vm.threadID rte
+                  | None ->
+                    match response with
+                    | Ok response ->
+                      let responseHeaders =
+                        response.headers
+                        |> List.map (fun (k, v) ->
+                          DTuple(
+                            DString(String.toLowercase k),
+                            DString(String.toLowercase v),
+                            []
+                          ))
+                        |> Dval.list (KTTuple(VT.string, VT.string, []))
+
+                      let fields =
+                        [ ("statusCode", DInt64(int64 response.statusCode))
+                          ("headers", responseHeaders) ]
+
+                      return
+                        Ok(
+                          DRecord(
+                            streamingResponseType,
+                            streamingResponseType,
+                            [],
+                            Map fields
+                          )
+                          |> resultOk
+                        )
+
+                    | Error err -> return Error err
 
                 | Error reqHeadersErr, _ ->
                   return Error(RequestError.BadHeader reqHeadersErr)
