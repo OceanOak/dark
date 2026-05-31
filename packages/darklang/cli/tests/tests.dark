@@ -28,11 +28,43 @@ let runWithCommand (args: List<String>): String =
     $"ERROR: {result.stderr}"
 
 
+let assertContains
+  (label: String)
+  (output: String)
+  (expected: String)
+  : TestResult =
+  if Stdlib.String.contains output expected then
+    TestResult.Pass
+  else
+    TestResult.Fail $"{label}: expected output to contain '{expected}', got '{output}'"
+
+
+let assertNotContains
+  (label: String)
+  (output: String)
+  (unexpected: String)
+  : TestResult =
+  if Stdlib.Bool.not (Stdlib.String.contains output unexpected) then
+    TestResult.Pass
+  else
+    TestResult.Fail $"{label}: expected output not to contain '{unexpected}', got '{output}'"
+
+
+let combineAssertions (results: List<TestResult>) : TestResult =
+  results
+  |> Stdlib.List.fold TestResult.Pass (fun acc result ->
+    match acc, result with
+    | Fail _, _ -> acc
+    | Pass, Pass -> TestResult.Pass
+    | Pass, Fail _ -> result)
+
+
 let testHelpCommand (): TestResult =
   let output = runWithCommand ["help"]
 
-  if Stdlib.String.contains output "Available commands:" &&
-      Stdlib.String.contains output "help" &&
+  // Help groups commands under category headers (Packages/SCM/Execution/...).
+  if Stdlib.String.contains output "Packages:" &&
+      Stdlib.String.contains output "nav" &&
       Stdlib.String.contains output "version" &&
       Stdlib.String.contains output "status" then
       TestResult.Pass
@@ -59,16 +91,17 @@ let testStatusCommand (): TestResult =
     TestResult.Fail "Expected status output with branch and uncommitted change summary"
 
 
-let testRunBoolAnd (): TestResult =
-  let output = runWithCommand ["run"; "@Stdlib.Bool.and true false"]
+// `eval <fn> [args]` calls a function; `run` now executes a .dark script file.
+let testEvalBoolAnd (): TestResult =
+  let output = runWithCommand ["eval"; "Stdlib.Bool.and true false"]
   if output == "false" then
     TestResult.Pass
   else
     TestResult.Fail $"Expected 'false', got '{output}'"
 
 
-let testRunInt64Add (): TestResult =
-  let output = runWithCommand ["run"; "@Stdlib.Int64.add 5L 3L"]
+let testEvalInt64Add (): TestResult =
+  let output = runWithCommand ["eval"; "Stdlib.Int64.add 5L 3L"]
   if output == "8" then
     TestResult.Pass
   else
@@ -155,6 +188,69 @@ let testEvalStringExpression (): TestResult =
     TestResult.Fail $"Expected 'helloworld', got '{output}'"
 
 
+let testFnQualifiedEnumPatternDiagnostic (): TestResult =
+  let output =
+    runWithCommand
+      [ "fn"
+        "/Darklang.CliParseDiagnostics.directQualified"
+        "(x: Result): Int64 = match x with | Stdlib.Result.Result.Ok n -> n" ]
+
+  combineAssertions
+    [ assertContains "parse failure" output "Failed to parse function definition"
+      assertContains "generic match case syntax" output "Invalid match case syntax." ]
+
+
+let testFnNestedQualifiedEnumPatternDiagnostic (): TestResult =
+  let output =
+    runWithCommand
+      [ "fn"
+        "/Darklang.CliParseDiagnostics.nestedQualified"
+        "(x: Result): Int64 = match x with | Ok (Json.Object f) -> 1L" ]
+
+  combineAssertions
+    [ assertContains "parse failure" output "Failed to parse function definition"
+      assertContains "generic match case syntax" output "Invalid match case syntax." ]
+
+
+let testFnBarePatternDottedGarbageDiagnostic (): TestResult =
+  let output =
+    runWithCommand
+      [ "fn"
+        "/Darklang.CliParseDiagnostics.patternDot"
+        "(x: Result): Int64 = match x with | Ok n .foo -> n" ]
+
+  combineAssertions
+    [ assertContains "parse failure" output "Failed to parse function definition"
+      assertContains "generic match case syntax" output "Invalid match case syntax."
+      assertNotContains "no qualified enum hint" output "Enum patterns use the bare case name" ]
+
+
+let testFnTrailingEnumConstructorDotDiagnostic (): TestResult =
+  let output =
+    runWithCommand
+      [ "fn"
+        "/Darklang.CliParseDiagnostics.trailingDot"
+        "(): Stdlib.Option.Option<Int64> = Stdlib.Option.Option.Some 1L ." ]
+
+  combineAssertions
+    [ assertContains "parse failure" output "Failed to parse function definition"
+      assertContains "near pointer" output "near line"
+      assertNotContains "no qualified enum hint" output "Enum patterns use the bare case name" ]
+
+
+let testFnMissingEnumConstructorCaseDiagnostic (): TestResult =
+  let output =
+    runWithCommand
+      [ "fn"
+        "/Darklang.CliParseDiagnostics.missingEnumCase"
+        "(x: Result): Int64 = match x with | Ok n -> Stdlib.Option.Option.Some . 1L" ]
+
+  combineAssertions
+    [ assertContains "parse failure" output "Failed to parse function definition"
+      assertContains "missing enum case" output "Expected enum case name after `.`."
+      assertNotContains "no created function" output "Created function" ]
+
+
 type TestFunction = Unit -> TestResult
 
 let allTests (): List<String * TestFunction> =
@@ -162,8 +258,8 @@ let allTests (): List<String * TestFunction> =
     ("Version", fun () -> testVersionCommand ())
     ("Status", fun () -> testStatusCommand ())
 
-    ("Run Bool.and", fun () -> testRunBoolAnd ())
-    ("Run Int64.add", fun () -> testRunInt64Add ())
+    ("Eval Bool.and", fun () -> testEvalBoolAnd ())
+    ("Eval Int64.add", fun () -> testEvalInt64Add ())
 
     ("Eval String Length", fun () -> testEvalStringLength ())
     ("Eval List Length", fun () -> testEvalListLength ())
@@ -177,6 +273,12 @@ let allTests (): List<String * TestFunction> =
 
     ("Eval Simple Expression", fun () -> testEvalSimpleExpression ())
     ("Eval String Expression", fun () -> testEvalStringExpression ())
+
+    ("Fn qualified enum pattern diagnostic", fun () -> testFnQualifiedEnumPatternDiagnostic ())
+    ("Fn nested qualified enum pattern diagnostic", fun () -> testFnNestedQualifiedEnumPatternDiagnostic ())
+    ("Fn bare pattern dotted garbage diagnostic", fun () -> testFnBarePatternDottedGarbageDiagnostic ())
+    ("Fn trailing enum constructor dot diagnostic", fun () -> testFnTrailingEnumConstructorDotDiagnostic ())
+    ("Fn missing enum constructor case diagnostic", fun () -> testFnMissingEnumConstructorCaseDiagnostic ())
   ]
 
 type TestSummary =

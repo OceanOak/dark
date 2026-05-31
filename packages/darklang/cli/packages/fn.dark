@@ -1,6 +1,47 @@
 module Darklang.Cli.Packages.Fn
 
 
+let printParseFailure
+  (fullSource: String)
+  (tree: LanguageTools.Parser.ParsedNode)
+  (locLine: Stdlib.Option.Option<String>)
+  (note: Stdlib.Option.Option<String>)
+  (showExamples: Bool)
+  : Unit =
+  let header = Colors.error "Failed to parse function definition"
+  let withLocation =
+    fun detail ->
+    match locLine with
+    | Some loc -> [ header; loc; detail ]
+    | None -> [ header; ""; detail; "" ]
+
+  match note with
+  | Some note ->
+    Stdlib.printLines (withLocation note)
+  | None ->
+    match Errors.firstError tree with
+    | Some err ->
+      let prefix =
+        match locLine with
+        | Some _ -> [ header ]
+        | None -> [ header; "" ]
+      let lines =
+        Stdlib.List.append prefix (Errors.formatErrorAt fullSource err)
+      Stdlib.printLines lines
+    | None ->
+      if showExamples then
+        [
+          header
+          ""
+          "Make sure your syntax is correct. Examples:"
+          "  fn double (x: Int64): Int64 = Stdlib.Int64.multiply x 2L"
+          "  fn greet (name: String): String = \"Hello, \" ++ name"
+          ""
+        ] |> Stdlib.printLines
+      else
+        Stdlib.printLines (withLocation "Make sure your syntax is correct.")
+
+
 let execute (state: Cli.AppState) (args: List<String>) : Cli.AppState =
   match args with
   | [] -> help state
@@ -71,84 +112,86 @@ let createFnInline
     // Find the fn_decl node
     match tree.children |> Stdlib.List.findFirst (fun node -> node.typ == "fn_decl") with
     | Some fnDeclNode ->
-      // Parse node to WrittenTypes
-      match LanguageTools.Parser.FunctionDeclaration.parse fnDeclNode with
-      | Ok writtenFn ->
-        // Convert to ProgramTypes.PackageFn
-        let pm = LanguageTools.PackageManager.pm ()
+      let topLevelError =
+        tree.children |> Stdlib.List.findFirst (fun node -> node.typ == "ERROR")
 
-        let ctx =
-          LanguageTools.NameResolver.NRContext
-            { onMissing = LanguageTools.NameResolver.OnMissing.Allow
-              pm = pm
-              branchId = state.currentBranchId
-              owner = location.owner
-              currentModule = location.modules }
-
-        let (packageFn, unresolvedNames) =
-          LanguageTools.WrittenTypesToProgramTypes.FunctionDeclaration.toPackageFnPT
-            ctx
-            writtenFn
-
-        // Check for unresolved names
-        if Errors.reportUnresolvedNames unresolvedNames then
-          state
-        // no unresolved names - keep going
-        else
-          // Check if this is an update (has previous versions)
-          let previousHashes = Propagate.getAllPreviousHashes state.currentBranchId location LanguageTools.ProgramTypes.ItemKind.Fn
-          let isUpdate = (Stdlib.List.isEmpty previousHashes) |> Stdlib.Bool.not
-
-          // Create ops: AddFn and SetName
-          let ops =
-            [ LanguageTools.ProgramTypes.PackageOp.AddFn packageFn
-              LanguageTools.ProgramTypes.PackageOp.SetName (location, LanguageTools.ProgramTypes.Reference.PackageFn packageFn.hash) ]
-
-          // Add ops as WIP (use 'scm commit' to commit)
-          match SCM.PackageOps.add state.currentBranchId ops with
-          | Ok _ ->
-            // Show success message
-            let fullPath = PrettyPrinter.ProgramTypes.PackageLocation.packageLocation location
-            let action = if isUpdate then "Updated" else "Created"
-
-            Stdlib.printLine ""
-            Stdlib.printLine (Colors.success $"✓ {action} function: {fullPath}")
-
-            // Auto-propagate if this is an update
-            if isUpdate then
-              Propagate.autoPropagateAfterUpdate state.currentBranchId location packageFn.hash LanguageTools.ProgramTypes.ItemKind.Fn
-
-            Stdlib.printLine ""
-            state
-
-          | Error msg ->
-            [ ""
-              (Colors.error $"✗ Failed to add function: {msg}")
-              "" ]
-            |> Stdlib.printLines
-
-            state
-
-      | Error unparseable ->
-        let r = unparseable.source.range
-        let detail =
-          match unparseable.note with
-          | Some note -> note
-          | None -> "Make sure your syntax is correct."
-        [ Colors.error "Failed to parse function definition"
-          $"  at line {Stdlib.Int64.toString (r.start.row + 1L)}, column {Stdlib.Int64.toString (r.start.column + 1L)}"
-          detail ]
-        |> Stdlib.printLines
+      match topLevelError with
+      | Some _ ->
+        printParseFailure fullSource tree Stdlib.Option.Option.None Stdlib.Option.Option.None false
         state
+
+      | None ->
+        // Parse node to WrittenTypes
+        match LanguageTools.Parser.FunctionDeclaration.parse fnDeclNode with
+        | Ok writtenFn ->
+          // Convert to ProgramTypes.PackageFn
+          let pm = LanguageTools.PackageManager.pm ()
+
+          let ctx =
+            LanguageTools.NameResolver.NRContext
+              { onMissing = LanguageTools.NameResolver.OnMissing.Allow
+                pm = pm
+                branchId = state.currentBranchId
+                owner = location.owner
+                currentModule = location.modules }
+
+          let (packageFn, unresolvedNames) =
+            LanguageTools.WrittenTypesToProgramTypes.FunctionDeclaration.toPackageFnPT
+              ctx
+              writtenFn
+
+          // Check for unresolved names
+          if Errors.reportUnresolvedNames unresolvedNames then
+            state
+          // no unresolved names - keep going
+          else
+            // Check if this is an update (has previous versions)
+            let previousHashes = Propagate.getAllPreviousHashes state.currentBranchId location LanguageTools.ProgramTypes.ItemKind.Fn
+            let isUpdate = (Stdlib.List.isEmpty previousHashes) |> Stdlib.Bool.not
+
+            // Create ops: AddFn and SetName
+            let ops =
+              [ LanguageTools.ProgramTypes.PackageOp.AddFn packageFn
+                LanguageTools.ProgramTypes.PackageOp.SetName (location, LanguageTools.ProgramTypes.Reference.PackageFn packageFn.hash) ]
+
+            // Add ops as WIP (use 'scm commit' to commit)
+            match SCM.PackageOps.add state.currentBranchId ops with
+            | Ok _ ->
+              // Show success message
+              let fullPath = PrettyPrinter.ProgramTypes.PackageLocation.packageLocation location
+              let action = if isUpdate then "Updated" else "Created"
+
+              Stdlib.printLine ""
+              Stdlib.printLine (Colors.success $"✓ {action} function: {fullPath}")
+
+              // Auto-propagate if this is an update
+              if isUpdate then
+                Propagate.autoPropagateAfterUpdate state.currentBranchId location packageFn.hash LanguageTools.ProgramTypes.ItemKind.Fn
+
+              Stdlib.printLine ""
+              state
+
+            | Error msg ->
+              [ ""
+                (Colors.error $"✗ Failed to add function: {msg}")
+                "" ]
+              |> Stdlib.printLines
+
+              state
+
+        | Error unparseable ->
+          let r = unparseable.source.range
+          let locLine =
+            $"  at line {Stdlib.Int64.toString (r.start.row + 1L)}, column {Stdlib.Int64.toString (r.start.column + 1L)}"
+          printParseFailure
+            fullSource
+            tree
+            (Stdlib.Option.Option.Some locLine)
+            unparseable.note
+            false
+          state
     | None ->
-      [
-        (Colors.error "Failed to parse function definition")
-        ""
-        "Make sure your syntax is correct. Examples:"
-        "  fn double (x: Int64): Int64 = Stdlib.Int64.multiply x 2L"
-        "  fn greet (name: String): String = \"Hello, \" ++ name"
-        ""
-      ] |> Stdlib.printLines
+      printParseFailure fullSource tree Stdlib.Option.Option.None Stdlib.Option.Option.None true
       state
   | Error msg ->
     Stdlib.printLine (Colors.error $"Invalid location: {msg}")

@@ -483,13 +483,15 @@ let baseParseEnum
 
   match typeNameNode, symbolDotNode, caseNameNode, enumFieldsNode with
   | Ok typeNameNode, Ok symbolDotNode, Ok caseNameNode, Ok enumFieldsNode ->
-
-    ctor (
-      node.range,
-      typeNameNode,
-      (caseNameNode.range, caseNameNode.text),
-      enumFieldsNode,
-      symbolDotNode.range
-    )
+    if (Stdlib.String.trim caseNameNode.text) == "" then
+      createUnparseableErrorMsg caseNameNode "Expected enum case name after `.`."
+    else
+      ctor (
+        node.range,
+        typeNameNode,
+        (caseNameNode.range, caseNameNode.text),
+        enumFieldsNode,
+        symbolDotNode.range
+      )
 
   | _ -> createUnparseableError node

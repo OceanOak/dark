@@ -679,14 +679,6 @@ let parseMatchCase
     node.children |> Stdlib.List.findFirst (fun c -> c.typ == "ERROR")
 
   match errorChild with
-  // Qualified enum-case patterns like `| Stdlib.Result.Result.Ok n ->` are
-  // unsupported (use the bare case name `| Ok n`). In this recovery shape,
-  // tree-sitter keeps the first path segment as the case name and puts the
-  // remaining dotted path in an ERROR child.
-  | Some err when Stdlib.String.contains err.text "." ->
-    createUnparseableErrorMsg
-      node
-      "Invalid match pattern. Enum patterns use the bare case name (e.g. `| Ok n`), not a qualified path like `| Stdlib.Result.Result.Ok n`."
   | Some _ -> createUnparseableErrorMsg node "Invalid match case syntax."
   | None ->
     match pipeSym, pattern, arrowSym, rhs with
@@ -697,6 +689,8 @@ let parseMatchCase
           rhs = rhs })
       |> Stdlib.Result.Result.Ok
 
+    | _, Error patternErr, _, _ -> Stdlib.Result.Result.Error patternErr
+    | _, _, _, Error rhsErr -> Stdlib.Result.Result.Error rhsErr
     | _ -> createUnparseableError node
 
 

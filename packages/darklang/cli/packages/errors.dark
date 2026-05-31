@@ -1,6 +1,54 @@
 module Darklang.Cli.Packages.Errors
 
 
+// Pre-order, depth-first walk for the first ERROR node that's worth showing.
+// Two filters keep us from misleading the user:
+//   - single-line only: multi-line ERRORs are typically the broken subtree
+//     boundary, not the failure point — their start is at col 0 of the wrap.
+//   - non-whitespace text: empty/whitespace ERRORs are recovery artifacts.
+// If the current node fails the filter we still recurse, since children may
+// carry a narrower acceptable ERROR. Returns None when no ERROR survives,
+// e.g. tree-sitter recovered into a wrong-but-valid AST — callers then fall
+// through to the generic message.
+let firstError
+  (node: LanguageTools.Parser.ParsedNode)
+  : Stdlib.Option.Option<LanguageTools.Parser.ParsedNode> =
+  let isAcceptable =
+    (node.typ == "ERROR")
+    && (node.range.start.row == node.range.end_.row)
+    && ((Stdlib.String.trim node.text) != "")
+  if isAcceptable then
+    Stdlib.Option.Option.Some node
+  else
+    node.children
+    |> Stdlib.List.fold Stdlib.Option.Option.None (fun acc child ->
+      match acc with
+      | Some _ -> acc
+      | None -> firstError child)
+
+
+// Render an ERROR node's location with the source line and a caret span
+// underneath. "near" wording is deliberate: recovery can plant the ERROR at
+// a symptom rather than the cause, so we don't promise "at".
+let formatErrorAt
+  (source: String)
+  (err: LanguageTools.Parser.ParsedNode)
+  : List<String> =
+  let lines = Stdlib.String.splitOnNewline source
+  let row = err.range.start.row
+  let startCol = err.range.start.column
+  let endCol = err.range.end_.column
+  let lineText =
+    Stdlib.Option.withDefault (Stdlib.List.getAt lines row) ""
+  let caretLen = if endCol > startCol then endCol - startCol else 1L
+  let caret =
+    (Stdlib.String.repeat " " startCol)
+    ++ (Stdlib.String.repeat "^" caretLen)
+  [ $"  near line {Stdlib.Int64.toString (row + 1L)}, column {Stdlib.Int64.toString (startCol + 1L)}"
+    $"     | {lineText}"
+    $"     | {caret}" ]
+
+
 /// Checks for invalid names (hard errors) and unresolved names (warnings).
 /// Returns true if there are invalid names (which block creation).
 /// Unresolved names are allowed in WIP — they'll be resolved by WipRefresh

@@ -135,8 +135,11 @@ Rules:
   # { must not be left of type name
 
 ## Enums
-  Option.Some 5L      # construct: TypeName.Case
-  | Some x -> ...     # match: just Case
+  Option.Some 5L                   # construct: qualify the type (TypeName.Case)
+  match o with | Some x -> ...     # match: BARE case name only
+  # NOT | Stdlib.Option.Option.Some x — a qualified case name on a match arm
+  # fails to parse, even nested (write | Ok (Some x), not | Ok (Option.Some x)).
+  # (Qualify the *type* when constructing; never qualify the *case* when matching.)
 
 ## Troubleshooting
 If commands hang or fail silently, check logs:

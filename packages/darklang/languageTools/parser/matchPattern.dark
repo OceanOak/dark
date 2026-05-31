@@ -245,12 +245,15 @@ let parseMPEnum
 
   match (caseNameNode, enumFieldsNode) with
   | Ok caseNameNode, Ok enumFieldsNode ->
-    (WrittenTypes.MatchPattern.MPEnum(
-      node.range,
-      (caseNameNode.range, caseNameNode.text),
-      enumFieldsNode
-    ))
-    |> Stdlib.Result.Result.Ok
+    if (Stdlib.String.trim caseNameNode.text) == "" then
+      createUnparseableErrorMsg caseNameNode "Expected enum case name."
+    else
+      (WrittenTypes.MatchPattern.MPEnum(
+        node.range,
+        (caseNameNode.range, caseNameNode.text),
+        enumFieldsNode
+      ))
+      |> Stdlib.Result.Result.Ok
 
   | _ -> createUnparseableError node
 
