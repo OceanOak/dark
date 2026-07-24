@@ -23,8 +23,15 @@ Open http://localhost:9090 → `1 + 2` → `3`. To host publicly, upload
 
 ## Notes
 
-- Supports single expressions only (no declarations yet). Builtins come from
-  `Builtins.Pure`, `Stdlib.*` from the snapshot. Output matches `dark eval`.
+- The REPL is stateful across entries: fn/type/`val` declarations become
+  in-memory package items under the `Repl` owner (callable unqualified in later
+  entries; redefinition wins), and a bare `let x = …` persists its bindings as
+  session variables (injected into later entries as pre-loaded VM registers).
+  Declarations can't close over session variables — package items are static.
+- Builtins: `Builtins.Pure` + `Builtins.Http.Client` (works over fetch; subject
+  to CORS) + browser-local `printLine`/`print` (buffered into each result) +
+  the `pmGetLocationsBy*` lookups the pretty-printer needs for type names.
+  `Stdlib.*` comes from the snapshot. Output matches `dark eval`.
 - Keep `<WasmBuildNative>false</WasmBuildNative>`. SQLite comes in through
   `LibParser`/`LibDB` and crashes the native-relink step. The browser never
   uses SQLite, so skipping it is safe.

@@ -22,6 +22,7 @@
     .entry { margin-bottom:12px; }
     .entry .in::before { content:"› "; color:var(--accent); }
     .entry .in { color:var(--fg); white-space:pre-wrap; }
+    .entry .stdout { color:var(--muted); white-space:pre-wrap; padding-left:1.2ch; }
     .entry .out { color:var(--ok); white-space:pre-wrap; padding-left:1.2ch; }
     .entry .out.err { color:var(--err); }
     .chips { padding:8px 18px; display:flex; gap:8px; flex-wrap:wrap; border-top:1px solid var(--border); }
@@ -60,9 +61,12 @@
 
     const EXAMPLES = [
       "1 + 2",
-      '"hello" ++ " world"',
       "[1; 2; 3] |> Stdlib.List.map (fun x -> x * 10)",
-      "let x = 21\nx * 2",
+      "let x = 21",
+      "x * 2",
+      "let double (n: Int) : Int =\n  n * 2",
+      "double 21",
+      'Stdlib.printLine "hello"',
       'match 3 with\n| 1 -> "one"\n| _ -> "many"',
     ];
     // #input is a textarea so multi-line examples survive; grow it with content.
@@ -77,11 +81,16 @@
       chips.appendChild(c);
     }
 
-    function append(source, out, isErr) {
+    function append(source, out, isErr, stdout) {
       const e = document.createElement("div"); e.className = "entry";
       const i = document.createElement("div"); i.className = "in"; i.textContent = source;
+      e.appendChild(i);
+      if (stdout) {
+        const p = document.createElement("div"); p.className = "stdout"; p.textContent = stdout;
+        e.appendChild(p);
+      }
       const o = document.createElement("div"); o.className = "out" + (isErr ? " err" : ""); o.textContent = out;
-      e.appendChild(i); e.appendChild(o); log.appendChild(e); log.scrollTop = log.scrollHeight;
+      e.appendChild(o); log.appendChild(e); log.scrollTop = log.scrollHeight;
     }
 
     // Calls the F# parse → lower → execute seam exported by Repl.Eval.
@@ -106,7 +115,7 @@
       input.value = ""; syncRows();
       try {
         const evaluated = await evalDark(source);
-        append(source, evaluated.result, evaluated.error);
+        append(source, evaluated.result, evaluated.error, evaluated.output);
       }
       catch (e) { append(source, String(e.message || e), true); }
       finally {

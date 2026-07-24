@@ -22,6 +22,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Output.fs" />
+    <Compile Include="PmLookup.fs" />
     <Compile Include="Repl.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
@@ -47,6 +49,8 @@
     <ProjectReference Include="../LibSerialization/LibSerialization.fsproj" />
     <ProjectReference Include="../LibDB/LibDB.fsproj" /> <!-- createInMemory (in-memory PM) -->
     <ProjectReference Include="../Builtins/Builtins.Pure/Builtins.Pure.fsproj" />
+    <!-- .NET HttpClient runs over fetch() in the browser, so this set works in WASM -->
+    <ProjectReference Include="../Builtins/Builtins.Http.Client/Builtins.Http.Client.fsproj" />
   </ItemGroup>
 
 </Project>
