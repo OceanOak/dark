@@ -433,10 +433,6 @@ export default function Home() {
           </div>
 
           <div className="workflow-list">
-            <div className="workflow-rail" aria-hidden="true">
-              <span>write</span><i /><span>run</span><i /><span>inspect</span><i />
-              <span>version</span><i /><span>deploy</span><i /><span>sync</span>
-            </div>
             {featureSteps.map((step, index) => (
               <article
                 className={`workflow-step ${index % 2 ? "reverse" : ""}`}

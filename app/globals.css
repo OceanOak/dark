@@ -436,28 +436,6 @@ button { color: inherit; }
 }
 .workflow-heading { margin-left: 80px; }
 .workflow-list { position: relative; }
-.workflow-rail {
-  position: sticky;
-  top: 18px;
-  z-index: 10;
-  height: 42px;
-  margin-bottom: 56px;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  color: #716e76;
-  background: rgba(17,18,20,.8);
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  backdrop-filter: blur(18px);
-  font-family: "Fira Code", monospace;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-}
-.workflow-rail i { width: 22px; height: 1px; background: #39383d; }
 .workflow-step {
   min-height: 590px;
   padding: 90px 0;
@@ -1085,7 +1063,6 @@ footer { padding: 75px 0 25px; background: #0d0e0f; border-top: 1px solid rgba(2
   .hero-code .code-line { grid-template-columns: 25px 1fr; }
   .install-command { margin-top: 45px; }
   .install-command code { font-size: 9px; }
-  .workflow-rail { overflow-x: auto; justify-content: flex-start; }
   .workflow-step { min-height: 0; padding: 75px 0; }
   .step-copy { padding: 0; }
   .step-visual { padding: 0; }
