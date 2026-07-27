@@ -580,7 +580,7 @@ export default function Home() {
         <div className="page-shell open-source-card" data-reveal>
           <div className="open-source-copy">
             <span className="section-kicker">Open source</span>
-            <h2>Open source.<br />Run it your way.</h2>
+            <h2>Run it your way.</h2>
             <p>
               The language, runtime, and tooling are Apache 2.0—the whole product, not a
               limited community tier. Develop locally, self-host on your own infrastructure,
@@ -652,7 +652,7 @@ export default function Home() {
         </div>
         <div className="page-shell footer-bottom">
           <span>© Darklang Inc. · Apache License 2.0</span>
-          <div><a href="https://github.com/darklang/classic-dark">Darklang Classic</a><a href="#">Privacy</a><a href="#">Terms</a></div>
+          <div><a href="https://github.com/darklang/classic-dark">Darklang Classic</a><a href="https://darklang.com/privacy">Privacy</a><a href="https://darklang.com/terms">Terms</a></div>
         </div>
       </footer>
     </main>
