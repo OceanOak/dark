@@ -1,0 +1,60 @@
+# OSes
+.DS_Store
+
+# Config
+config/local
+
+# IDEs
+.idea
+.ionide/
+
+# Build system
+rundir/
+.next/
+dist/
+node_modules/
+npm-debug.log*
+
+# F# / dotnet
+backend/src/LibExecution/package-ref-hashes.txt
+backend/packages/
+backend/paket-files/
+backend/.paket/
+backend/Build/
+backend/src/**/obj
+backend/tests/**/obj
+backend/static/dark_wasm/
+# WASM REPL build output (backend/src/Wasm) — generated, don't commit
+backend/src/Wasm/publish/
+backend/src/Wasm/wwwroot/packages.snapshot
+darklang-repl.zip
+
+# Native SQLite archives for AOT — built by scripts/build/build-sqlite.sh
+# from the amalgamation, cached locally + in CI.
+backend/src/Cli/lib/libe_sqlite3-*.a
+
+# Extension
+.vsix/*
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+
+###############
+# Deployment
+###############
+
+deploy-lock-manual-deploy
+.secrets
+
+clis/
+
+.mono
+.fake
+
+# Scratch planning/execution notes, not part of any PR.
+notes/
+
+# Claude Code session lock (per-process, regenerated each session).
+.claude/scheduled_tasks.lock
