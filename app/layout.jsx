@@ -1,9 +1,9 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Darklang — Build software without assembling a stack",
+  title: "Darklang — Guest workspace",
   description:
-    "An open-source, typed language and runtime with packages, source control, tracing, deployment, and sync built in.",
+    "A small dashboard prototype for trying Darklang as an anonymous user.",
 };
 
 export default function RootLayout({ children }) {
