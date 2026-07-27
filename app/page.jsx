@@ -484,46 +484,44 @@ export default function Home() {
         <div className="page-shell" data-reveal>
           <div className="section-heading architecture-heading">
             <span className="section-kicker">Why it works</span>
-            <h2>One program.<br />No handoffs.</h2>
+            <h2>The pieces were designed together.</h2>
             <p>
-              The language, package tree, runtime, and infrastructure all read the same
-              content-addressed definition. Nothing gets translated into a different artifact
-              on the way to production.
+              Most stacks connect separate tools after the fact. Here, the language, package
+              tree, runtime, and infrastructure share one representation of the program—so
+              each part can understand the others directly.
             </p>
           </div>
-          <div className="model-panel">
-            <div className="model-record">
-              <div className="model-record-icon">d</div>
-              <div>
-                <span>Content-addressed program</span>
-                <strong>Acme.shout <b>v2</b></strong>
-              </div>
-              <code>sha256:8c3…a91</code>
-              <small><i /> immutable</small>
-            </div>
-            <div className="model-views">
-              <a href="#write">
-                <span>{"{ }"}</span><small>01</small>
-                <strong>Language</strong><p>Defines the behavior.</p>
-                <code>8c3…a91</code>
-              </a>
-              <a href="#version">
-                <span>◈</span><small>02</small>
-                <strong>Package tree</strong><p>Stores the version.</p>
-                <code>8c3…a91</code>
-              </a>
-              <a href="#run">
-                <span>▶</span><small>03</small>
-                <strong>Runtime</strong><p>Executes the program.</p>
-                <code>8c3…a91</code>
-              </a>
-              <a href="#deploy">
-                <span>⇄</span><small>04</small>
-                <strong>Infrastructure</strong><p>Makes it live.</p>
-                <code>8c3…a91</code>
-              </a>
-            </div>
-            <div className="model-proof"><span>Same definition at every stage</span><i /><strong>No build artifact</strong></div>
+          <div className="system-roles">
+            <a href="#write">
+              <span><i>01</i>{"{ }"}</span>
+              <h3>Language</h3>
+              <p>Defines the program.</p>
+              <small>What you write</small>
+            </a>
+            <a href="#version">
+              <span><i>02</i>◈</span>
+              <h3>Package tree</h3>
+              <p>Stores and versions it.</p>
+              <small>What changes</small>
+            </a>
+            <a href="#run">
+              <span><i>03</i>▶</span>
+              <h3>Runtime</h3>
+              <p>Runs it immediately.</p>
+              <small>What executes</small>
+            </a>
+            <a href="#deploy">
+              <span><i>04</i>⇄</span>
+              <h3>Infrastructure</h3>
+              <p>Makes it live.</p>
+              <small>What goes live</small>
+            </a>
+          </div>
+          <div className="system-note">
+            <strong>One content-addressed program</strong>
+            <span>No translation layer</span><i />
+            <span>No artifact handoff</span><i />
+            <span>No configuration drift</span>
           </div>
         </div>
       </section>
