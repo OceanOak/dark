@@ -197,20 +197,36 @@ function ProductVisual({ type }) {
 
   if (type === "trace") {
     return (
-      <div className="product-window">
+      <div className="product-window trace-window">
         <WindowBar label="trace #1042 · shout “world”" live />
         <div className="trace-body">
-          <div className="trace-row trace-input">
-            <span className="trace-tree">●</span><span>name</span><strong>= “world”</strong>
+          <div className="trace-summary">
+            <div>
+              <span>Execution</span>
+              <strong>shout “world”</strong>
+            </div>
+            <span className="trace-duration">2 ms</span>
           </div>
-          <div className="trace-row">
-            <span className="trace-tree">├</span><code>greet name</code><strong>→ “Hello, world”</strong>
-          </div>
-          <div className="trace-row">
-            <span className="trace-tree">└</span><code>toUppercase</code><strong>→ “HELLO, WORLD”</strong>
+          <div className="trace-path">
+            <div className="trace-step">
+              <span className="trace-index">input</span>
+              <div><code>name</code><strong>“world”</strong></div>
+              <span className="trace-check">✓</span>
+            </div>
+            <div className="trace-step">
+              <span className="trace-index">01</span>
+              <div><code>greet name</code><strong>“Hello, world”</strong></div>
+              <span className="trace-check">✓</span>
+            </div>
+            <div className="trace-step">
+              <span className="trace-index">02</span>
+              <div><code>toUppercase</code><strong>“HELLO, WORLD”</strong></div>
+              <span className="trace-check">✓</span>
+            </div>
           </div>
           <div className="trace-footer">
-            <span>2 ms</span><span>no errors</span><span>saved for replay</span>
+            <span><i /> saved with real inputs</span>
+            <button type="button">Replay execution ↗</button>
           </div>
         </div>
       </div>
@@ -261,28 +277,32 @@ function ProductVisual({ type }) {
   }
 
   return (
-    <div className="product-window">
+    <div className="product-window sync-window">
       <WindowBar label="sync · instances" live />
       <div className="sync-body">
         <div className="sync-nodes">
           <div className="sync-node">
             <span className="node-icon">⌁</span>
-            <div><strong>laptop</strong><small>offline is fine</small></div>
+            <div><small>source</small><strong>Laptop</strong><span>Acme.shout v2</span></div>
           </div>
           <div className="sync-flow">
-            <span>················</span><strong>⇄</strong><span>················</span>
+            <i /><strong>⇄</strong><i />
+            <small>content verified</small>
           </div>
           <div className="sync-node">
             <span className="node-icon">◇</span>
-            <div><strong>cloud instance</strong><small>running · healthy</small></div>
+            <div><small>running</small><strong>Cloud</strong><span>Acme.shout v2</span></div>
           </div>
         </div>
         <div className="sync-events">
-          <p><span>pulled</span><code>Stdlib.Http v14</code><small>pure · auto-upgrade</small></p>
-          <p><span>pushed</span><code>Acme.shout v2</code><small>content verified</small></p>
-          <p><span>live</span><code>running app updated</code><small>zero downtime</small></p>
+          <p><span className="event-icon">↓</span><code>Stdlib.Http v14</code><small>pulled · pure upgrade</small><b>done</b></p>
+          <p><span className="event-icon">↑</span><code>Acme.shout v2</code><small>pushed · hash matched</small><b>done</b></p>
+          <p><span className="event-icon live">●</span><code>Running app updated</code><small>traffic never stopped</small><b>live</b></p>
         </div>
-        <p className="rollback"><span className="prompt">$</span> dark rollback Acme.shout v1 <strong>done</strong></p>
+        <div className="rollback">
+          <code><span className="prompt">$</span> dark rollback Acme.shout v1</code>
+          <span>choose any previous version <strong>↗</strong></span>
+        </div>
       </div>
     </div>
   );
@@ -462,46 +482,49 @@ export default function Home() {
 
       <section className="architecture section" id="architecture">
         <div className="page-shell" data-reveal>
-          <div className="section-heading compact">
+          <div className="section-heading architecture-heading">
             <span className="section-kicker">Why it works</span>
-            <h2>One shared model, end to end.</h2>
+            <h2>One program.<br />No handoffs.</h2>
             <p>
-              The language, runtime, package tree, and infrastructure share one model of the
-              program. What you write is what runs, what gets versioned, and what goes live.
+              The language, package tree, runtime, and infrastructure all read the same
+              content-addressed definition. Nothing gets translated into a different artifact
+              on the way to production.
             </p>
           </div>
-          <div className="architecture-board">
-            <div className="architecture-line horizontal" aria-hidden="true" />
-            <div className="architecture-line vertical" aria-hidden="true" />
-            <a className="architecture-card top-left" href="#write">
-              <span className="architecture-icon">{"{ }"}</span>
-              <small>01</small><h3>Language</h3>
-              <p>Defines the program.</p><Arrow />
-            </a>
-            <a className="architecture-card top-right" href="#run">
-              <span className="architecture-icon">▶</span>
-              <small>02</small><h3>Runtime</h3>
-              <p>Runs it immediately.</p><Arrow />
-            </a>
-            <a className="architecture-card bottom-left" href="#version">
-              <span className="architecture-icon">◈</span>
-              <small>03</small><h3>Package tree</h3>
-              <p>Stores and versions it.</p><Arrow />
-            </a>
-            <a className="architecture-card bottom-right" href="#deploy">
-              <span className="architecture-icon">⇄</span>
-              <small>04</small><h3>Infrastructure</h3>
-              <p>Makes it live.</p><Arrow />
-            </a>
-            <div className="architecture-core">
-              <span>single source of truth</span>
-              <strong>Acme</strong>
+          <div className="model-panel">
+            <div className="model-record">
+              <div className="model-record-icon">d</div>
+              <div>
+                <span>Content-addressed program</span>
+                <strong>Acme.shout <b>v2</b></strong>
+              </div>
               <code>sha256:8c3…a91</code>
+              <small><i /> immutable</small>
             </div>
+            <div className="model-views">
+              <a href="#write">
+                <span>{"{ }"}</span><small>01</small>
+                <strong>Language</strong><p>Defines the behavior.</p>
+                <code>8c3…a91</code>
+              </a>
+              <a href="#version">
+                <span>◈</span><small>02</small>
+                <strong>Package tree</strong><p>Stores the version.</p>
+                <code>8c3…a91</code>
+              </a>
+              <a href="#run">
+                <span>▶</span><small>03</small>
+                <strong>Runtime</strong><p>Executes the program.</p>
+                <code>8c3…a91</code>
+              </a>
+              <a href="#deploy">
+                <span>⇄</span><small>04</small>
+                <strong>Infrastructure</strong><p>Makes it live.</p>
+                <code>8c3…a91</code>
+              </a>
+            </div>
+            <div className="model-proof"><span>Same definition at every stage</span><i /><strong>No build artifact</strong></div>
           </div>
-          <p className="architecture-footnote">
-            No translation layer. No artifact handoff. No configuration drift.
-          </p>
         </div>
       </section>
 
@@ -575,26 +598,34 @@ export default function Home() {
       <section className="open-source section">
         <div className="page-shell open-source-card" data-reveal>
           <div className="open-source-copy">
-            <span className="section-kicker">Open source</span>
-            <h2>Run it your way.</h2>
-            <p>
-              The language, runtime, and tooling are Apache 2.0—the whole product, not a
-              limited community tier. Develop locally, self-host on your own infrastructure,
-              or use Darklang Cloud. Hosting is optional; your code is never tied to our cloud.
-            </p>
+            <div>
+              <span className="section-kicker">Open source</span>
+              <h2>Run it your way.</h2>
+              <p>
+                The language, runtime, and tooling are Apache 2.0—the whole product, not a
+                limited community tier. Develop locally, self-host on your own infrastructure,
+                or use Darklang Cloud. Hosting is optional; your code is never tied to our cloud.
+              </p>
+            </div>
+            <div className="license-proof">
+              <span>{"{ }"}</span>
+              <div><small>License</small><strong>Apache 2.0</strong><p>Language · runtime · tooling</p></div>
+            </div>
+          </div>
+          <div className="hosting-options">
+            <div><span>⌁</span><small>01</small><strong>Local</strong><p>The complete runtime on your machine.</p><b>Runs offline</b></div>
+            <div><span>◇</span><small>02</small><strong>Self-hosted</strong><p>Your infrastructure and operating rules.</p><b>You control it</b></div>
+            <div><span>✦</span><small>03</small><strong>Darklang Cloud</strong><p>Managed hosting, live in milliseconds.</p><b>Optional</b></div>
+          </div>
+          <div className="open-source-footer">
             <a className="button button-dark" href="https://github.com/darklang/dark">
               View source on GitHub <Arrow />
             </a>
-          </div>
-          <div className="hosting-options">
-            <div><span>⌁</span><small>01</small><strong>Local</strong><p>Your machine, full runtime.</p></div>
-            <div><span>◇</span><small>02</small><strong>Self-hosted</strong><p>Your infrastructure, your rules.</p></div>
-            <div><span>✦</span><small>03</small><strong>Darklang Cloud</strong><p>Managed and live in milliseconds.</p></div>
-          </div>
-          <div className="open-links">
-            <a href="https://github.com/darklang/dark">Project status & roadmap <Arrow /></a>
-            <a href="https://docs.darklang.com/contributing/repo-layout">Contribute <Arrow /></a>
-            <a href="https://github.com/darklang/classic-dark">Darklang Classic <Arrow /></a>
+            <div className="open-links">
+              <a href="https://github.com/darklang/dark">Project status & roadmap <Arrow /></a>
+              <a href="https://docs.darklang.com/contributing/repo-layout">Contribute <Arrow /></a>
+              <a href="https://github.com/darklang/classic-dark">Darklang Classic <Arrow /></a>
+            </div>
           </div>
         </div>
       </section>
