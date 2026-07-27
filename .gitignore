@@ -11,6 +11,7 @@ config/local
 # Build system
 rundir/
 .next/
+dist/
 node_modules/
 npm-debug.log*
 
