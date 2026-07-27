@@ -10,6 +10,9 @@ config/local
 
 # Build system
 rundir/
+.next/
+node_modules/
+npm-debug.log*
 
 # F# / dotnet
 backend/src/LibExecution/package-ref-hashes.txt
