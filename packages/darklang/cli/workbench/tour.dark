@@ -1,0 +1,484 @@
+/// The guided tour: one label at a time, each drawn beside the part of the frame it explains.
+///
+/// `dark wb --tour` starts it, and so does Home's "take the tour" row on a fresh store.
+///
+/// The tour never takes the workbench's keys. Every key does what it always does, esc and ⏎
+/// included, so you can wander off mid-step, open things and come back without the tour moving
+/// or ending under you. It has four keys of its own, none of which the workbench uses: `]` the
+/// next step, `[` the one before, `.` hide or show the label, and `X` close the tour. A step that
+/// asks you to try something is ticked once you have, and then waits for `]` like the rest.
+///
+/// The tour sits above the overlays in `State.tour` rather than being one of them: a step can
+/// ask you to open the keymap, and the keymap has to be able to open under it. While another
+/// overlay is up the label steps aside, and comes back when it closes.
+///
+/// Part of `Darklang.Cli.Workbench`.
+module Darklang.Cli.Workbench
+
+/// Which part of the frame a tour label points at.
+type TourSpot =
+  /// No part in particular: the label sits in the middle of the screen.
+  | Centre
+  /// The context row along the top.
+  | ContextRow
+  /// The nav strip under it.
+  | NavStrip
+  /// The view's own body.
+  | Body
+  /// The key hints along the bottom.
+  | HintsRow
+  /// The `:` command bar, which opens in the hints row. Drawn on the right, so the completion
+  /// dropdown above the bar stays in sight.
+  | CommandBar
+
+/// What moves the tour on from a step.
+type TourGoal =
+  /// Nothing to try: read it, then `]`.
+  | Read
+  /// Go to another view, by a number key or the nav.
+  | ChangeView
+  /// Open the `?` keymap.
+  | OpenKeymap
+  /// Open the `:` command bar.
+  | OpenCommandBar
+  /// Run a line from the command bar, so its output opens in the reader.
+  | RunCommand
+
+/// A running tour: which step it is on, whether that step's try-it has been done, and whether
+/// the label is tucked away into a one-line pill.
+type Tour =
+  { step: Int64
+    done: Bool
+    hidden: Bool }
+
+/// One stop on the tour.
+type TourStep =
+  { spot: TourSpot
+    title: String
+    lines: List<String>
+    /// What to try, for a step the tour waits on; "" for a `Read` step.
+    tryIt: String
+    goal: TourGoal
+    /// Text on the spot's row the label points at, such as `2 Code` in the nav strip. "" points at
+    /// the row's first visible text. Found in the drawn frame, so a label follows a hint that moved;
+    /// when it is not on screen the label still draws, pointing nowhere in particular.
+    anchor: String }
+
+/// The stops, in order. Lines are kept under 56 columns so a label fits an 80-column terminal.
+let tourSteps(): List<TourStep> =
+  let step(
+    spot: TourSpot,
+    title: String,
+    lines: List<String>,
+    tryIt: String,
+    goal: TourGoal,
+    anchor: String)
+    : TourStep =
+    TourStep { spot = spot, title = title, lines = lines, tryIt = tryIt, goal = goal, anchor = anchor }
+
+  [ step(
+      TourSpot.Centre,
+      "Hi! This is the workbench.",
+      [ "It's where you browse your code, see what you've"
+        "changed, and switch branches, all from the keyboard."
+        ""
+        "This tour waits for you. Explore as much as you"
+        "like, then press ] for the next step or [ to go"
+        "back. Press . to tuck this label out of the way." ],
+      "",
+      TourGoal.Read,
+      "")
+    step(
+      TourSpot.ContextRow,
+      "Where you are",
+      [ "The top line shows which branch you're on and which"
+        "machine this is. If something needs your attention,"
+        "it shows up on the right." ],
+      "",
+      TourGoal.Read,
+      "")
+    step(
+      TourSpot.NavStrip,
+      "Getting around",
+      [ "These are the places you can go. Each one has a"
+        "number, so pressing it takes you straight there." ],
+      "Press 2 to open your code.",
+      TourGoal.ChangeView,
+      "2 Code")
+    step(
+      TourSpot.Body,
+      "The main area",
+      [ "This is where you work. Use ↑ and ↓ to move, ⏎ to"
+        "open something, and esc to go back."
+        ""
+        "Esc never closes the workbench, so feel free to"
+        "explore." ],
+      "",
+      TourGoal.Read,
+      "")
+    step(
+      TourSpot.HintsRow,
+      "Not sure what to press?",
+      [ "The bottom line always shows the keys you can use"
+        "right here." ],
+      "Press ? to see all of them. Any key closes the list.",
+      TourGoal.OpenKeymap,
+      "? help")
+    step(
+      TourSpot.HintsRow,
+      "Running commands",
+      [ "Anything you can do with `dark` in your terminal,"
+        "you can do here too." ],
+      "Press : to start typing a command.",
+      TourGoal.OpenCommandBar,
+      ": cmd")
+    step(
+      TourSpot.CommandBar,
+      "Try one",
+      [ "Type a command and press ⏎. You'll see the result"
+        "on screen; press esc when you're done. You can also"
+        "type a bit of Dark, like `1 + 2`." ],
+      "Type help and press ⏎.",
+      TourGoal.RunCommand,
+      "›")
+    step(
+      TourSpot.Centre,
+      "You're all set!",
+      [ "Press / to search, ? to see every key, or q to quit."
+        ""
+        "Want this tour again? Run `dark wb --tour`." ],
+      "",
+      TourGoal.Read,
+      "") ]
+
+/// A tour on step <param index>, fresh: not done, label showing. No tour once it has run past
+/// the last step.
+let tourAt(index: Int64): Stdlib.Option.Option<Tour> =
+  if index >= 0 && index < (Stdlib.List.length(tourSteps())) then
+    Stdlib.Option.Option.Some(Tour { step = index, done = false, hidden = false })
+  else
+    Stdlib.Option.Option.None
+
+/// Is the `:` command bar open?
+let commandBarOpen(state: State): Bool =
+  match state.input with
+  | Some(inp) -> inp.action == "command"
+  | None -> false
+
+/// Can the tour's own keys be used right now? Not while something is taking typed text (the
+/// command bar, a prompt, the editor, the branch picker's search) and not while the keymap is up,
+/// where any key closes it. A `]` there is text, not "next step".
+let tourKeysLive(state: State): Bool =
+  (state.overlay == Overlay.NoOverlay)
+  && (Stdlib.Option.isNone(state.input))
+  && (Stdlib.Option.isNone(state.editing))
+
+/// Has <param step> been done, going by the state before a key and the state after it?
+let tourGoalMet(step: TourStep, before: State, after: State): Bool =
+  match step.goal with
+  | Read -> false
+  | ChangeView -> after.activeView != before.activeView
+  | OpenKeymap -> after.overlay == Overlay.Keymap
+  | OpenCommandBar -> commandBarOpen(after)
+  | RunCommand ->
+    (commandBarOpen(before))
+    && (Stdlib.Bool.not(commandBarOpen(after)))
+    && (Stdlib.Option.isSome(after.reading))
+
+/// Tick the current step once a key the workbench handled did what it asked. Never moves the
+/// tour: that is always `]`.
+let tourAfter(before: State, after: State): State =
+  match after.tour with
+  | Some(tour) ->
+    if tour.done then
+      after
+    else
+      match Stdlib.List.getAt(tourSteps(), tour.step) with
+      | Some(step) ->
+        if tourGoalMet(step, before, after) then
+          { after with tour = Stdlib.Option.Option.Some({ tour with done = true }) }
+        else
+          after
+      | None -> after
+  | None -> after
+
+/// The tour's own key, if <param keyChar> is one and the tour can take it now; None otherwise,
+/// and the key goes to the workbench as usual.
+let tourKey(state: State, keyChar: Stdlib.Option.Option<String>): Stdlib.Option.Option<State> =
+  match state.tour with
+  | None -> Stdlib.Option.Option.None
+  | Some(tour) ->
+    if Stdlib.Bool.not(tourKeysLive(state)) then
+      Stdlib.Option.Option.None
+    else
+      match keyChar with
+      | Some("]") -> Stdlib.Option.Option.Some({ state with tour = tourAt(tour.step + 1) })
+      | Some("[") ->
+        Stdlib.Option.Option.Some({ state with tour = tourAt(Stdlib.max(0, tour.step - 1)) })
+      | Some(".") ->
+        Stdlib.Option.Option.Some(
+          { state with tour = Stdlib.Option.Option.Some({ tour with hidden = Stdlib.Bool.not(tour.hidden) }) })
+      | Some("X") -> Stdlib.Option.Option.Some({ state with tour = Stdlib.Option.Option.None })
+      | _ -> Stdlib.Option.Option.None
+
+/// A key while a tour is running: the tour's own keys go to it, and everything else goes to the
+/// workbench exactly as it would without a tour, which is then checked for a step done.
+let handleTourKey(
+  state: State,
+  key: Stdlib.Cli.Stdin.Key.Key,
+  modifiers: Stdlib.Cli.Stdin.Modifiers.Modifiers,
+  keyChar: Stdlib.Option.Option<String>)
+  : Step =
+  match tourKey(state, keyChar) with
+  | Some(next) -> Step.Continue(next)
+  | None ->
+    match handleKeyLayers(state, key, modifiers, keyChar) with
+    | Continue(next) -> Step.Continue(tourAfter(state, next))
+    | other -> other
+
+
+// ── Drawing ──
+
+/// The label's background: a muted violet, lighter than the terminal's own background and the
+/// frame's panes, so the label reads as something sitting on top of the screen.
+val tourBg = "\u001b[48;5;60m"
+
+/// Body text on the label: bright, to hold up against the background.
+val tourText = "\u001b[97m"
+
+/// The footer's keys: a pale lavender, quieter than the body without going dim, which would be
+/// unreadable on the violet.
+val tourQuiet = "\u001b[38;5;189m"
+
+/// What the step asks you to do: bold yellow, the one warm colour on the label.
+val tourAction = "\u001b[1m\u001b[38;5;220m"
+
+/// The border, in the purple the workbench uses for focus.
+val tourBorderColor = "\u001b[38;5;183m"
+
+/// <param text> on the label's background. Styled text resets at its end, which would also reset
+/// the background, so every reset inside it puts the background back.
+let onTourBg(text: String): String =
+  let reset = Stdlib.Cli.UI.Colors.reset
+  tourBg + tourText + (Stdlib.String.replaceAll(text, reset, reset + tourBg + tourText)) + reset
+
+/// A try-it that has been done: green, so the change from the yellow ask is visible at a glance.
+val tourDone = "\u001b[1m\u001b[38;5;120m"
+
+/// What the label is about, picked out on screen: black on the action's yellow.
+val tourHighlight = "\u001b[30m\u001b[48;5;220m"
+
+/// One border row of a label: <param leftEdge>, a run of ─, <param rightEdge>.
+let tourBorder(width: Int64, leftEdge: String, rightEdge: String): String =
+  let line = Stdlib.String.repeat("─", Stdlib.max(0, width - 2))
+  onTourBg(Stdlib.Cli.UI.Colors.colorize(tourBorderColor, leftEdge + line + rightEdge))
+
+/// Where <param anchor> is on screen row <param row> of the drawn frame: its zero-based column and
+/// the text to pick out there. An empty anchor is the row's first word, which on the top row is the
+/// branch name. Spans are searched in drawing order.
+let tourAnchor(
+  spans: List<Stdlib.Cli.UI.Layout.Span>,
+  row: Int64,
+  anchor: String)
+  : Stdlib.Option.Option<(Int64 * String)> =
+  spans
+  |> Stdlib.List.filter(fun span -> span.row == row)
+  |> Stdlib.List.filterMap(fun span ->
+    let plain = Stdlib.Cli.Tui.Text.stripSgr(span.text)
+    if anchor == "" then
+      let trimmed = Stdlib.String.trimStart(plain)
+      if trimmed == "" then
+        Stdlib.Option.Option.None
+      else
+        let word =
+          Stdlib.String.split(trimmed, " ") |> Stdlib.List.head |> Stdlib.Option.withDefault(trimmed)
+        Stdlib.Option.Option.Some(
+          (span.col + (Stdlib.String.displayWidth(plain)) - (Stdlib.String.displayWidth(trimmed)), word))
+    else
+      match Stdlib.String.indexOf(plain, anchor) with
+      | Some(at) ->
+        Stdlib.Option.Option.Some(
+          (span.col + (Stdlib.String.displayWidth(Stdlib.String.first(plain, at))), anchor))
+      | None -> Stdlib.Option.Option.None)
+  |> Stdlib.List.head
+
+/// How much of the frame a <param w> by <param h> label at (<param row>, <param col>) would hide:
+/// the visible characters under it. <param grid> is the frame as plain rows.
+let tourCovers(grid: List<String>, row: Int64, col: Int64, w: Int64, h: Int64): Int64 =
+  Stdlib.List.range(row, row + h - 1)
+  |> Stdlib.List.map(fun r ->
+    match Stdlib.List.getAt(grid, r) with
+    | Some(line) ->
+      if Stdlib.String.length(line) <= col then 0
+      else
+        let under = Stdlib.String.slice(line, col, Stdlib.min(Stdlib.String.length(line), col + w))
+        Stdlib.String.length(Stdlib.String.replaceAll(under, " ", ""))
+    | None -> 0)
+  |> Stdlib.List.fold(0, fun(acc, n) -> acc + n)
+
+/// The label for step <param index>, over <param frame>, the spans of the frame it is drawn on.
+///
+/// It goes where it hides the least, and never over the row it explains: a label on top of the
+/// thing it is describing is no help. Where it is about one thing on that row (the branch name,
+/// `2 Code`, `? help`), that thing is picked out in yellow rather than pointed at, so the label
+/// can sit wherever there is room. <param strip> says whether the nav is a strip under the
+/// context row.
+let renderTourLabel(
+  step: TourStep,
+  index: Int64,
+  done: Bool,
+  count: Int64,
+  screen: Stdlib.Cli.UI.Layout.Region,
+  strip: Bool,
+  frame: List<Stdlib.Cli.UI.Layout.Span>)
+  : List<Stdlib.Cli.UI.Layout.Span> =
+  let progress = (Stdlib.display(index + 1)) + "/" + (Stdlib.display(count))
+  let footer =
+    if index + 1 == count then "] finish · [ back"
+    else if index == 0 then "] next · . hide · X close the tour"
+    else "] next · [ back · . hide · X close the tour"
+  let tryLines =
+    if step.tryIt == "" then
+      []
+    else if done then
+      let doneLine = "✓ Nice. Look around, then press ] when you're ready."
+      [ ("", ""), (doneLine, Stdlib.Cli.UI.Colors.colorize(tourDone, doneLine)) ]
+    else
+      [ ("", ""), ("▶ " + step.tryIt, Stdlib.Cli.UI.Colors.colorize(tourAction, "▶ " + step.tryIt)) ]
+  // Each row as (plain, styled): the plain text is what gets measured, the styled is drawn.
+  let bodyRows =
+    Stdlib.List.flatten(
+      [ step.lines |> Stdlib.List.map(fun l -> (l, l))
+        tryLines
+        [ ("", ""), (footer, Stdlib.Cli.UI.Colors.colorize(tourQuiet, footer)) ] ])
+  let titleWidth = (Stdlib.String.displayWidth(step.title)) + 3 + (Stdlib.String.displayWidth(progress))
+  let widest =
+    bodyRows
+    |> Stdlib.List.map(fun pair ->
+      let (plain, _styled) = pair
+      Stdlib.String.displayWidth(plain))
+    |> Stdlib.List.fold(titleWidth, fun(acc, n) -> Stdlib.max(acc, n))
+  // Two columns of border and one of padding either side, held to the screen.
+  let w = Stdlib.min(widest + 4, Stdlib.max(20, screen.cols - 2))
+  let cw = w - 4
+  let pad(plain: String, styled: String): String =
+    styled + (Stdlib.String.repeat(" ", Stdlib.max(0, cw - (Stdlib.String.displayWidth(plain)))))
+  let titleRow =
+    let gap = Stdlib.max(1, cw - (Stdlib.String.displayWidth(step.title)) - (Stdlib.String.displayWidth(progress)))
+    (Stdlib.Cli.UI.Colors.boldText(step.title))
+    + (Stdlib.String.repeat(" ", gap))
+    + (Stdlib.Cli.UI.Colors.colorize(tourQuiet, progress))
+  let rows =
+    Stdlib.List.flatten(
+      [ [ titleRow, pad("", "") ]
+        bodyRows
+        |> Stdlib.List.map(fun pair ->
+          let (plain, styled) = pair
+          pad(plain, styled)) ])
+  let h = (Stdlib.List.length(rows)) + 2
+
+  // The row the step is about, as a screen row; -1 for none.
+  let hintsRow = screen.rows - 1
+  let targetRow =
+    match step.spot with
+    | Centre -> 0 - 1
+    | ContextRow -> 0
+    | NavStrip -> if strip then 1 else 0 - 1
+    | Body -> 0 - 1
+    | HintsRow -> hintsRow
+    | CommandBar -> hintsRow
+  let anchor =
+    if targetRow < 0 then Stdlib.Option.Option.None
+    else tourAnchor(frame, targetRow, step.anchor)
+
+  // Inside the body's frame: below the context row, the nav strip and the frame's top border,
+  // and above its bottom border and the hints.
+  let firstRow = if strip then 3 else 2
+  let lastTop = Stdlib.max(firstRow, hintsRow - 1 - h)
+  let centreCol = Stdlib.max(0, (screen.cols - w) / 2)
+  let (row, col) =
+    match step.spot with
+    | Centre -> (Stdlib.max(0, (screen.rows - h) / 2), centreCol)
+    | _ ->
+      let grid =
+        Stdlib.Cli.UI.Canvas.compose(screen.cols, screen.rows, frame)
+        |> Stdlib.List.map(fun r -> Stdlib.Cli.Tui.Text.stripSgr(r))
+      let cols = [ 2, Stdlib.max(0, screen.cols - w - 3), centreCol ]
+      // Least hidden first; between equals, nearest the row it explains, so the eye does not
+      // have to travel. With no row, nearest the middle.
+      let near = if targetRow < 0 then screen.rows / 2 else targetRow
+      Stdlib.List.range(firstRow, lastTop)
+      |> Stdlib.List.map(fun r -> cols |> Stdlib.List.map(fun c -> (r, c)))
+      |> Stdlib.List.flatten
+      |> Stdlib.List.map(fun rc ->
+        let (r, c) = rc
+        let d = r + (h / 2) - near
+        let distance = if d < 0 then 0 - d else d
+        ((tourCovers(grid, r, c, w, h)) * 1000 + distance, rc))
+      |> Stdlib.List.sortBy(fun scored ->
+        let (score, _rc) = scored
+        score)
+      |> Stdlib.List.head
+      |> Stdlib.Option.map(fun scored ->
+        let (_score, rc) = scored
+        rc)
+      |> Stdlib.Option.withDefault((firstRow, 2))
+
+  let highlight =
+    match anchor with
+    | Some((at, text)) ->
+      Stdlib.Cli.UI.Layout.at(screen, targetRow, at, Stdlib.Cli.UI.Colors.colorize(tourHighlight, text))
+    | None -> []
+  let bar = Stdlib.Cli.UI.Colors.colorize(tourBorderColor, "│")
+  Stdlib.List.flatten(
+    [ highlight
+      Stdlib.Cli.UI.Layout.at(screen, row, col, tourBorder(w, "╭", "╮"))
+      rows
+      |> Stdlib.List.indexedMap(fun(i, text) ->
+        Stdlib.Cli.UI.Layout.at(screen, row + 1 + i, col, onTourBg(bar + " " + text + " " + bar)))
+      |> Stdlib.List.flatten
+      Stdlib.Cli.UI.Layout.at(screen, row + h - 1, col, tourBorder(w, "╰", "╯")) ])
+
+/// The tour tucked into one line on the right of the context row: where it is, and the keys to
+/// go on or bring the label back. Shown when you hid the label, and while a reader or the editor
+/// fills the body, where a full label would sit on top of what you are reading.
+let renderTourPill(
+  step: TourStep,
+  tour: Tour,
+  count: Int64,
+  screen: Stdlib.Cli.UI.Layout.Region)
+  : List<Stdlib.Cli.UI.Layout.Span> =
+  let progress = (Stdlib.display(tour.step + 1)) + "/" + (Stdlib.display(count))
+  let mark = if tour.done then " ✓" else ""
+  let next = if tour.step + 1 == count then "] finish" else "] next"
+  let plain = $" Tour {progress} · {step.title}{mark} · {next} · . show "
+  let w = Stdlib.String.displayWidth(plain)
+  let styled =
+    Stdlib.Cli.UI.Colors.boldText($" Tour {progress}")
+    + $" · {step.title}"
+    + (if tour.done then Stdlib.Cli.UI.Colors.colorize(tourDone, mark) else "")
+    + (Stdlib.Cli.UI.Colors.colorize(tourQuiet, $" · {next} · . show "))
+  Stdlib.Cli.UI.Layout.at(screen, 0, Stdlib.max(0, screen.cols - w - 1), onTourBg(styled))
+
+/// The tour over <param frame>: the label, the pill, or nothing (no tour, or another overlay is
+/// up).
+let renderTour(
+  state: State,
+  screen: Stdlib.Cli.UI.Layout.Region,
+  strip: Bool,
+  frame: List<Stdlib.Cli.UI.Layout.Span>)
+  : List<Stdlib.Cli.UI.Layout.Span> =
+  if state.overlay != Overlay.NoOverlay then
+    []
+  else
+    match state.tour with
+    | None -> []
+    | Some(tour) ->
+      let steps = tourSteps()
+      let count = Stdlib.List.length(steps)
+      match Stdlib.List.getAt(steps, tour.step) with
+      | None -> []
+      | Some(step) ->
+        let busy = (Stdlib.Option.isSome(state.reading)) || (Stdlib.Option.isSome(state.editing))
+        if tour.hidden || busy then renderTourPill(step, tour, count, screen)
+        else renderTourLabel(step, tour.step, tour.done, count, screen, strip, frame)

@@ -38,14 +38,43 @@ test canvasLayersLaterSpans =
         Darklang.Stdlib.Cli.UI.Layout.at(region, 0, 2, "BB") ])
   let row = canvasRow(spans)
 
-  // The later span wins. Where it lands inside an earlier one, the earlier one's right-hand remainder is
-  // dropped rather than split in two: the only thing that ever gets covered this way is the uniform blank
-  // padding an overlay lays down first, and the renderer erases each row before writing it, so a row that
-  // stops early is indistinguishable from one padded out with spaces.
-  if row == "aaBB" then
+  // The later span wins, and the earlier one is split around it: what it had to the right still shows,
+  // so a label drawn over a frame's border keeps the rest of the border.
+  if row == "aaBBa" then
     Stdlib.Test.Result.Pass
   else
     Stdlib.Test.fail($"Expected later span to layer over earlier, got '{row}'")
+
+
+test canvasSplitCutsAtTheColumn =
+  let region = canvasRegion()
+  let spans =
+    Stdlib.List.flatten(
+      [ Darklang.Stdlib.Cli.UI.Layout.at(region, 0, 0, "1 ab  2 cd")
+        Darklang.Stdlib.Cli.UI.Layout.at(region, 0, 2, "XX") ])
+  let row = canvasRow(spans)
+  // Cut at the exact column even where the covered text has spaces, not at the nearest word.
+  if row == "1 XX  2 cd" then
+    Stdlib.Test.Result.Pass
+  else
+    Stdlib.Test.fail($"Expected the split at the column, got '{row}'")
+
+
+test canvasSplitKeepsStyling =
+  let region = canvasRegion()
+  let spans =
+    Stdlib.List.flatten(
+      [ Darklang.Stdlib.Cli.UI.Layout.at(region, 0, 0, "\u001b[35m──────────\u001b[0m")
+        Darklang.Stdlib.Cli.UI.Layout.at(region, 0, 3, "ab") ])
+  let raw =
+    Darklang.Stdlib.Cli.UI.Canvas.compose(10, 2, spans)
+    |> Stdlib.List.head
+    |> Stdlib.Option.withDefault("")
+  // The border past the label is still there, and still in its colour.
+  if (Darklang.Stdlib.Cli.Tui.Text.stripSgr(raw) == "───ab─────")
+     && (Stdlib.String.contains(Stdlib.String.dropFirst(raw, 4), "\u001b[35m"))
+  then Stdlib.Test.Result.Pass
+  else Stdlib.Test.fail($"Expected the covered border split around the label, got '{raw}'")
 
 
 test canvasWideGlyphOccupiesTwoColumns =

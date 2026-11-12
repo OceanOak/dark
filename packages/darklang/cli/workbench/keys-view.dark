@@ -371,6 +371,18 @@ let handleKey(
   // A transient toast lives for exactly one keypress: clear it here, so any key dismisses the last message.
   let state = if state.message == "" then state else { state with messageKind = MessageKind.Succeeded, message = "" }
 
+  // A running tour takes its own few keys and hands the rest on unchanged (`tour.dark`).
+  match state.tour with
+  | Some(_) -> handleTourKey(state, key, modifiers, keyChar)
+  | None -> handleKeyLayers(state, key, modifiers, keyChar)
+
+/// The layers under the tour, innermost first. See `handleKey`.
+let handleKeyLayers(
+  state: State,
+  key: Stdlib.Cli.Stdin.Key.Key,
+  modifiers: Stdlib.Cli.Stdin.Modifiers.Modifiers,
+  keyChar: Stdlib.Option.Option<String>)
+  : Step =
   // An overlay is modal: it takes the key before anything else acts on it.
   match state.overlay with
   | Branches(picker) -> handleBranchPickerKey(state, picker, key, modifiers, keyChar)

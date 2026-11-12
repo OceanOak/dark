@@ -22,6 +22,7 @@
 ///   authoring.dark        opening the editor and saving what you wrote
 ///   keys.dark             key handling for the modal layers
 ///   keys-view.dark        the plain-view key map, and the dispatcher between layers
+///   tour.dark             the guided tour: labels beside each part of the frame
 ///   frame.dark            the shared chrome render helpers (its own module)
 ///
 /// Rendering returns spans composed into a diffed `Stdlib.Cli.Tui.View`.
@@ -138,6 +139,7 @@ let initialStateFrom(
         messageKind = MessageKind.Succeeded
         search = emptySearch()
         overlay = Overlay.NoOverlay
+        tour = Stdlib.Option.Option.None
         navbarSel = 0
         wsLast = []
         back = []
@@ -199,16 +201,19 @@ let execute(cliState: Darklang.Cli.AppState, args: List<String>): Darklang.Cli.A
   let state = { state with wipNames = wip, deprecatedNames = deprecated }
   // Seed the context row from the same draft Home was built from.
   let state = { state with scmStatus = scmStatusFrom(branchId, draft) }
+  let state =
+    if Stdlib.List.contains(args, "--tour") then { state with tour = tourAt(0) } else state
   // Launching is what enters the alternate screen and paints the first frame; from here on the renderer
   // diffs, so a keystroke rewrites the rows that changed rather than clearing and repainting.
   Darklang.Cli.Component.launchOrExit(cliState, component(), state)
 
 let help(_state: Darklang.Cli.AppState): String =
-  [ "Usage: workbench [--live]"
+  [ "Usage: workbench [--live] [--tour]"
     "Open the workbench - a framed, navigable view of your package tree."
     ""
     "  --live  reload when something else changes the store. Without it nothing moves"
     "          until you press `R`."
+    "  --tour  start with the guided tour: a label beside each part of the screen."
     ""
     "  The strip along the top is every place you can go: Left/Right walk it, Enter goes, Esc backs out."
     "  1-9 jump to a workspace    S switch branch    tab next pane    ` nav    / find    : command    ? keys    q quit" ]

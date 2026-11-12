@@ -31,9 +31,9 @@ type Segment =
 /// Lay `next` over `existing`, trimming whatever it covers.
 ///
 /// Spans within a row are painted in the order they were produced, so a later one wins: an overlay draws a
-/// blank band and then its content on top. Where a later span lands inside an earlier one, the earlier one's
-/// right-hand remainder is dropped rather than split. That's indistinguishable in practice, because the only
-/// thing that ever gets covered this way is blank padding, and gaps render as spaces anyway.
+/// blank band and then its content on top. Where a later span lands inside an earlier one, the earlier one
+/// is split around it, so whatever it had to the right of the later span still shows: a label drawn over a
+/// frame's border row keeps the rest of the border.
 let overlay(existing: List<Segment>, next: Segment): List<Segment> =
   let nextEnd = next.col + next.width
 
@@ -69,8 +69,28 @@ let overlay(existing: List<Segment>, next: Segment): List<Segment> =
         )
       else
         Stdlib.Option.Option.None)
-
-  Stdlib.List.append(kept, next)
+  // What the covered segment had past `next`'s right edge. Segments never overlap one another, so at
+  // most one reaches past it. `wrapAtColumn` restates the styling at the cut, so the tail keeps its
+  // colour; everything after the first piece is the tail. It breaks at spaces when it can and drops
+  // the space it broke at, so the spaces go in as no-break spaces, which it cuts at the exact column,
+  // and come back out after.
+  let nbsp = " "
+  let tail =
+    existing
+    |> Stdlib.List.filterMap(fun seg ->
+      let segEnd = seg.col + seg.width
+      if seg.col < nextEnd && segEnd > nextEnd then
+        let unbreakable = Stdlib.String.replaceAll(seg.text, " ", nbsp)
+        match Tui.Text.wrapAtColumn(unbreakable, nextEnd - seg.col) with
+        | [_covered, ...rest] ->
+          let text = Stdlib.String.replaceAll(Stdlib.String.join(rest, ""), nbsp, " ")
+          let width = Tui.Text.styledWidth(text)
+          if width == 0 then Stdlib.Option.Option.None
+          else Stdlib.Option.Option.Some(Segment { col = nextEnd, text = text, width = width })
+        | _ -> Stdlib.Option.Option.None
+      else
+        Stdlib.Option.Option.None)
+  Stdlib.List.flatten([ kept, [ next ], tail ])
 
 
 /// Render placed segments into one row, padding the gaps between them with spaces.

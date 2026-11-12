@@ -233,7 +233,8 @@ val helpGroups =
     ("Home", "⏎ open / switch to the row's branch   c commit   b new branch   s choose branch   m merge   r rebase   x delete branch")
     ("Changes", "⏎ source   c commit   x discard   o/t/a resolve the conflict under the cursor")
     ("Traces", "⏎ open   r resume   p pin   x delete   f filter   E errors   P processes")
-    ("Search", "↑↓ move   ⏎ jump   esc close") ]
+    ("Search", "↑↓ move   ⏎ jump   esc close")
+    ("Tour", "] next step   [ previous step   . hide or show the label   X close the tour") ]
 
 /// A centered, boxed keymap overlay drawn over the frame. The interior is cleared so nothing shows through.
 let renderHelpOverlay(screen: Stdlib.Cli.UI.Layout.Region): List<Stdlib.Cli.UI.Layout.Span> =

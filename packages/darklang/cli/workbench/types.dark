@@ -219,6 +219,9 @@ type State =
     search: SearchState
     /// The overlay drawn over the frame, if any.
     overlay: Overlay
+    /// The guided tour's current step, if one is running (`tour.dark`). Not an `Overlay`: a
+    /// step can ask you to open one, so the two have to be able to exist at once.
+    tour: Stdlib.Option.Option<Tour>
     /// The navbar cursor, as a position into `navbarRows`. `focus ==
     /// Neither` means the navbar owns the keyboard.
     navbarSel: Int64

@@ -146,21 +146,24 @@ let renderFull(state: State, size: Stdlib.Cli.Tui.Size): List<Stdlib.Cli.UI.Layo
           else
             (Stdlib.Cli.Tui.Text.clipToWidth(h, Stdlib.max(0, hintRoom - 2))) + (Stdlib.Cli.UI.Colors.dimText("…"))
         Stdlib.List.flatten([ Frame.renderKeyHints(r, shownHints), toast ]))
-  Stdlib.List.flatten(
-    [ Stdlib.Cli.UI.Layout.vstack(
-        screen,
-        (if strip then [ context, nav, body, hints ] else [ context, body, hints ]))
-      match state.overlay with
-      | NoOverlay -> []
-      | Keymap -> renderHelpOverlay(screen)
-      | Branches(picker) -> renderBranchPicker(state, picker, screen)
-      // A narrow terminal has no nav strip, so focusing the nav draws it as
-      // an overlay instead.
-      if (state.overlay == Overlay.NoOverlay) && (navbarFocused(state)) && (Stdlib.Bool.not(strip)) then
-        renderNavbarOverlay(state, wip, conflictCount, screen)
-      else
-        []
-      renderCommandCompletions(state, screen) ])
+  let frame =
+    Stdlib.List.flatten(
+      [ Stdlib.Cli.UI.Layout.vstack(
+          screen,
+          (if strip then [ context, nav, body, hints ] else [ context, body, hints ]))
+        match state.overlay with
+        | NoOverlay -> []
+        | Keymap -> renderHelpOverlay(screen)
+        | Branches(picker) -> renderBranchPicker(state, picker, screen)
+        // A narrow terminal has no nav strip, so focusing the nav draws it as
+        // an overlay instead.
+        if (state.overlay == Overlay.NoOverlay) && (navbarFocused(state)) && (Stdlib.Bool.not(strip)) then
+          renderNavbarOverlay(state, wip, conflictCount, screen)
+        else
+          []
+        renderCommandCompletions(state, screen) ])
+  // Last, over everything it explains. It reads the frame to find what it points at.
+  Stdlib.List.flatten([ frame, renderTour(state, screen, strip, frame) ])
 
 
 /// The ghost-completion suffix for the `:` command bar - the chars that would complete the current command or

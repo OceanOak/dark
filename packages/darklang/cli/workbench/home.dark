@@ -46,7 +46,8 @@ let homeStartRows(
   let row(name: String, kind: String, desc: String): BodyItem =
     BodyItem { name = name, kind = kind, isModule = false, desc = desc }
   if onMain && (uncommittedOps == 0) && (conflicts == 0) && (otherBranches == 0) then
-    [ row("try an expression", "home-start-repl", "4 REPL · run a line of Dark")
+    [ row("take the tour", "home-start-tour", "a quick look around, about a minute")
+      row("try an expression", "home-start-repl", "4 REPL · run a line of Dark")
       row("write a function", "home-start-code", "2 Code · n starts a new one")
       row("read the docs", "home-start-docs", "6 Docs · syntax, types, the stdlib") ]
   else
@@ -191,7 +192,9 @@ let openHomeRow(state: State): Step =
   match Stdlib.List.getAt(state.items, state.selected) with
   | None -> Step.Continue(state)
   | Some(item) ->
-    if item.kind == "home-start-repl" then
+    if item.kind == "home-start-tour" then
+      Step.Continue({ state with tour = tourAt(0) })
+    else if item.kind == "home-start-repl" then
       Step.Continue(goTo(state, mkDest(vScratch, 0)))
     else if item.kind == "home-start-code" then
       Step.Continue(goTo(state, mkDest(vMatter, 0)))
