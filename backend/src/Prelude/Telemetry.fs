@@ -31,9 +31,18 @@ let isEnabled () : bool = logPath <> ""
 /// Write a raw JSON line to the telemetry log (thread-safe via lock).
 let private writeLock = obj ()
 
+/// Past this the log moves to `<path>.1`, replacing the one before, so the two never hold much
+/// more than twice it.
+let private maxLogBytes = 64L * 1024L * 1024L
+
 let private writeLine (line : string) : unit =
   if logPath <> "" then
     lock writeLock (fun () ->
+      try
+        if System.IO.FileInfo(logPath).Length > maxLogBytes then
+          System.IO.File.Move(logPath, logPath + ".1", true)
+      with _ ->
+        ()
       try
         System.IO.File.AppendAllText(logPath, line + "\n")
       with _ ->
