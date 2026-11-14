@@ -198,6 +198,17 @@ let private sameEverywhere (items : RT.Dval[]) (a : DvalList) (b : DvalList) =
   for i in 0 .. items.Length - 1 do
     Expect.equal (DvalList.tryItem (int64 i) a) (Some items[i]) "getAt"
 
+// the runtime sometimes allocates on this thread mid-run (I saw a walk make 2,488 bytes
+// once, under load), so warm up and take the least of three runs
+let private allocatedBy (f : unit -> unit) : int64 =
+  for _ in 1..3 do
+    f ()
+  List.min
+    [ for _ in 1..3 do
+        let before = System.GC.GetAllocatedBytesForCurrentThread()
+        f ()
+        System.GC.GetAllocatedBytesForCurrentThread() - before ]
+
 let private listTests =
   testList
     "DvalList"
@@ -303,11 +314,7 @@ let private listTests =
           Expect.equal (DvalList.compareWith order a b) 0 "ordered alike"
           Expect.equal (DvalList.compareWith order c a) -1 "ordered"
           Expect.equal (DvalList.tryFind isLast a) (ValueSome last) "found"
-        run ()
-        let before = System.GC.GetAllocatedBytesForCurrentThread()
-        run ()
-        let made = System.GC.GetAllocatedBytesForCurrentThread() - before
-        Expect.isLessThan made 2000L "bytes allocated"
+        Expect.isLessThan (allocatedBy run) 2000L "bytes allocated"
         Expect.isTrue
           (Dval.equals (RT.DList(VT.int64, a)) (RT.DList(VT.int64, b)))
           "Dark equality"
@@ -334,12 +341,11 @@ let private listTests =
           match DvalList.uncons list with
           | ValueSome(struct (_, rest)) -> walk rest (n + 1)
           | ValueNone -> n
-        walk list 0 |> ignore<int>
-        let before = System.GC.GetAllocatedBytesForCurrentThread()
-        let n = walk list 0
-        let made = System.GC.GetAllocatedBytesForCurrentThread() - before
-        Expect.equal n 5000 "every value"
-        Expect.isLessThan made 2000L "bytes allocated"
+        Expect.equal (walk list 0) 5000 "every value"
+        Expect.isLessThan
+          (allocatedBy (fun () -> walk list 0 |> ignore<int>))
+          2000L
+          "bytes allocated"
       } ]
 
 
