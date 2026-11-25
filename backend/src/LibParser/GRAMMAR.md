@@ -214,7 +214,8 @@ One rule set for all inputs:
   `List.fold(\n  init,\n  fn)`.
 - An operator on a new line continues the statement at-or-past the anchor —
   except `-`, which must be *past* it (`1` then `-8` at the anchor is two
-  statements, not subtraction).
+  statements, not subtraction). Written with a space, `1` then `- 8` at the
+  anchor, it looks like a subtraction and is a `PARSE-LEADING-MINUS` error.
 - `else`/`elif` bind to the `if` chain at-or-left of their column; `match` arms
   align on the first `|`'s column (a shallower `|` belongs to an outer match).
 

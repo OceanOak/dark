@@ -23,6 +23,7 @@ module DiagnosticCode =
   let intRange = "PARSE-INT-RANGE" // integer literal out of range
   let tooDeep = "PARSE-TOO-DEEP" // nesting beyond the recursion cap
   let unexpected = "PARSE-UNEXPECTED" // stray token inside a construct
+  let leadingMinus = "PARSE-LEADING-MINUS" // a line starting with `-` after an expression
   let pipeSegment = "PARSE-PIPE-SEGMENT" // pipe RHS isn't a valid segment
   let pattern = "PARSE-PATTERN" // invalid match pattern shape
   let effect = "PARSE-EFFECT" // unknown effect name in a `:{…}` row
@@ -2205,6 +2206,27 @@ and private parseInfixFrom
     || (if s.stmtExact then tok state j <> TMinus || col <> so
         elif tok state j = TMinus then col > so
         else col >= so)
+  // `a\n- b`, with a space after the `-`, reads as a subtraction but is two statements, `a`
+  // then `-b`. Refuse it, so the writer says which is meant. `-b`, written as a negative value
+  // is, stays a new statement.
+  if
+    tok state j = TMinus
+    && not opContinues
+    && (rng state j).end_ <> (rng state (j + 1)).start
+    && not (
+      state.diagnostics
+      |> Seq.exists (fun d ->
+        d.code = DiagnosticCode.leadingMinus && d.range = rng state j)
+    )
+  then
+    errFull
+      state
+      DiagnosticCode.leadingMinus
+      j
+      "a line starting with `- ` begins a new statement; it does not subtract from the line above"
+      []
+      (Some
+        "indent the line to continue the expression, or write `-x` with no space for a negative value")
   match infixBindingPower (tok state j) with
   // A `|` belonging to an enclosing match is that match's arm separator, not
   // bitwise-or; leave it for `parseMatch`.

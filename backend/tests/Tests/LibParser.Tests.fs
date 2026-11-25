@@ -1594,6 +1594,21 @@ let tests =
               "Me.Probe.p calls Me.Gone.piped, which does not exist" ]
             "the calls to nothing, in fns, pipes and values; a test may call a missing name"
         | Error e -> failtest $"did not parse: {e}")
+      testCase "a line starting with `- ` after an expression is refused" (fun _ ->
+        let codes (src : string) =
+          (P.parse src).diagnostics |> List.map (fun d -> d.code)
+        Expect.equal
+          (codes "let f(a: Int64, b: Int64): Int64 =\n  a\n  - b")
+          [ P.DiagnosticCode.leadingMinus ]
+          "it reads as a subtraction but is a new statement"
+        Expect.equal
+          (codes "let f(a: Int64, b: Int64): Int64 =\n  a\n    - b")
+          []
+          "indented, it continues the expression"
+        Expect.equal
+          (codes "let f(a: Int64, b: Int64): Int64 =\n  a\n  -b")
+          []
+          "with no space it is a negative value, as written")
       testTask "a reload refuses package code that calls a missing fn" {
         let localExec =
           match System.Environment.GetEnvironmentVariable "DARK_TEST_LOCALEXEC" with
